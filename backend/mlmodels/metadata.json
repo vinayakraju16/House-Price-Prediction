@@ -1,0 +1,183 @@
+{
+  "elastic_net": {
+    "rmse": 71944.78,
+    "r2": 0.3252
+  },
+  "gradient_boost": {
+    "rmse": 38076.3,
+    "r2": 0.811
+  },
+  "ensemble": {
+    "rmse": 49556.4,
+    "r2": 0.6798
+  },
+  "deployed_model": "gradient_boost",
+  "features": [
+    "MasVnrArea",
+    "SaleType_WD",
+    "OverallQual",
+    "OverallCond",
+    "ExterQual_Gd",
+    "ExterCond_Fa",
+    "BsmtUnfSF",
+    "BsmtFinType1_LwQ",
+    "LotArea",
+    "YearBuilt",
+    "BsmtFinSF1",
+    "TotRmsAbvGrd",
+    "GarageCars",
+    "GarageArea"
+  ],
+  "training_rows": 1168,
+  "test_rows": 292,
+  "dataset_rows": 1460,
+  "target_summary": {
+    "minimum": 34900.0,
+    "median": 163000.0,
+    "maximum": 755000.0
+  },
+  "feature_importance": [
+    {
+      "feature": "OverallQual",
+      "importance": 0.5846
+    },
+    {
+      "feature": "BsmtFinSF1",
+      "importance": 0.0968
+    },
+    {
+      "feature": "TotRmsAbvGrd",
+      "importance": 0.0683
+    },
+    {
+      "feature": "LotArea",
+      "importance": 0.0635
+    },
+    {
+      "feature": "GarageCars",
+      "importance": 0.0633
+    },
+    {
+      "feature": "YearBuilt",
+      "importance": 0.0518
+    },
+    {
+      "feature": "GarageArea",
+      "importance": 0.0307
+    },
+    {
+      "feature": "BsmtUnfSF",
+      "importance": 0.0127
+    },
+    {
+      "feature": "MasVnrArea",
+      "importance": 0.0108
+    },
+    {
+      "feature": "OverallCond",
+      "importance": 0.0107
+    },
+    {
+      "feature": "ExterQual_Gd",
+      "importance": 0.0044
+    },
+    {
+      "feature": "SaleType_WD",
+      "importance": 0.0023
+    },
+    {
+      "feature": "BsmtFinType1_LwQ",
+      "importance": 0.0001
+    },
+    {
+      "feature": "ExterCond_Fa",
+      "importance": 0.0
+    }
+  ],
+  "typical_feature_ranges": {
+    "MasVnrArea": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 456.0,
+      "maximum": 1600.0
+    },
+    "SaleType_WD": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1.0,
+      "maximum": 1.0
+    },
+    "OverallQual": {
+      "minimum": 1.0,
+      "p05": 4.0,
+      "p95": 8.0,
+      "maximum": 10.0
+    },
+    "OverallCond": {
+      "minimum": 1.0,
+      "p05": 4.0,
+      "p95": 8.0,
+      "maximum": 9.0
+    },
+    "ExterQual_Gd": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1.0,
+      "maximum": 1.0
+    },
+    "ExterCond_Fa": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 0.0,
+      "maximum": 1.0
+    },
+    "BsmtUnfSF": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1468.0,
+      "maximum": 2336.0
+    },
+    "BsmtFinType1_LwQ": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1.0,
+      "maximum": 1.0
+    },
+    "LotArea": {
+      "minimum": 1300.0,
+      "p05": 3311.7,
+      "p95": 17401.15,
+      "maximum": 215245.0
+    },
+    "YearBuilt": {
+      "minimum": 1872.0,
+      "p05": 1916.0,
+      "p95": 2007.0,
+      "maximum": 2010.0
+    },
+    "BsmtFinSF1": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1274.0,
+      "maximum": 5644.0
+    },
+    "TotRmsAbvGrd": {
+      "minimum": 2.0,
+      "p05": 4.0,
+      "p95": 10.0,
+      "maximum": 14.0
+    },
+    "GarageCars": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 3.0,
+      "maximum": 4.0
+    },
+    "GarageArea": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 850.1,
+      "maximum": 1418.0
+    }
+  }
+}

@@ -1,0 +1,35 @@
+# Python environments and generated Python files
+venv/
+.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+
+# A mistakenly committed copy of Python packages in this repository
+backend/bin/
+backend/dateutil/
+backend/joblib/
+backend/numpy/
+backend/numpy.libs/
+backend/pandas/
+backend/pytz/
+backend/tzdata/
+backend/six.py
+backend/*.dist-info/
+
+# Django runtime files and local configuration
+*.sqlite3
+*.log
+.env
+
+# JavaScript build output
+frontend/node_modules/
+frontend/build/
+
+# Large downloaded government data files (reproducible through ml scripts)
+data/raw/
+data/processed/
+
+# Editor and operating-system files
+.vscode/
+.DS_Store

@@ -1,4 +1,8 @@
-# Getting Started with Create React App
+# Frontend
+
+React client for the house-price API. Install dependencies with `npm install` and start it with `npm start`.
+
+Set `REACT_APP_API_URL` to the Django API origin when it is not `http://localhost:8000`.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

@@ -1,4 +1,5 @@
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -9,12 +10,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-(v$q)nf-ne)#^qz70@1o$#v(ps=@a79lwej!6ug%g=d68uc4(j'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-development-only-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host]
 
 
 # Application definition
@@ -43,8 +44,20 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000'
+    origin for origin in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',') if origin
 ]
+
+# Optional data keys for the market-context endpoint. Keep these in .env or
+# deployment configuration, never in source control.
+CENSUS_API_KEY = os.environ.get('CENSUS_API_KEY', '')
+FRED_API_KEY = os.environ.get('FRED_API_KEY', '')
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'house-price-market-context',
+    }
+}
 
 ROOT_URLCONF = 'djanoproject.urls'
 
