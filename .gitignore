@@ -21,14 +21,28 @@ backend/*.dist-info/
 *.sqlite3
 *.log
 .env
+mlruns/
+mlruns.db
+backups/postgres/*
+!backups/postgres/.gitkeep
 
 # JavaScript build output
 frontend/node_modules/
-frontend/build/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+backend/staticfiles/*
+!backend/staticfiles/.gitkeep
 
 # Large downloaded government data files (reproducible through ml scripts)
 data/raw/
 data/processed/
+data/*.zip
+
+# Local legacy quarantine and intermediate training artifacts
+archive/
+reports/*.joblib
 
 # Editor and operating-system files
 .vscode/

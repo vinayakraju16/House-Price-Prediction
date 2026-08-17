@@ -1,8 +1,12 @@
 """Model loading, input validation, and prediction logic."""
 
+import hmac
+import json
+import logging
+import math
+from datetime import datetime, timezone
 from functools import lru_cache
 from hashlib import sha256
-import json
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlencode
@@ -14,50 +18,121 @@ import pandas as pd
 from django.conf import settings
 from django.core.cache import cache
 
+from .validation import FEATURE_NAMES, PredictionInputError, validate_prediction_payload
 
-FEATURE_NAMES = (
-    "MasVnrArea", "SaleType_WD", "OverallQual", "OverallCond",
-    "ExterQual_Gd", "ExterCond_Fa", "BsmtUnfSF", "BsmtFinType1_LwQ",
-    "LotArea", "YearBuilt", "BsmtFinSF1", "TotRmsAbvGrd",
-    "GarageCars", "GarageArea",
-)
-
-INTEGER_FEATURES = {
-    "SaleType_WD", "OverallQual", "OverallCond", "ExterQual_Gd",
-    "ExterCond_Fa", "BsmtFinType1_LwQ", "YearBuilt", "TotRmsAbvGrd",
-    "GarageCars",
+logger = logging.getLogger(__name__)
+FEATURE_LABELS = {
+    "beds": "Bedrooms",
+    "baths": "Bathrooms",
+    "size": "Living area",
+    "lot_size": "Lot size",
+    "zip_code": "ZIP code",
+    "stories": "Stories",
+    "grade": "Building grade",
+    "condition": "Condition",
+    "year_built": "Year built",
+    "year_renovated": "Year renovated",
+    "finished_basement_sqft": "Finished basement",
+    "garage_sqft": "Garage area",
+    "fireplaces": "Fireplaces",
+    "heat_system": "Heating system",
+    "has_view": "View",
+    "property_type": "Property type",
+    "sale_year": "Valuation year",
+    "sale_month": "Valuation month",
 }
 
-# Held-out RMSE recorded by ml/train.py for the deployed Gradient Boosting model.
-# This is an error-based estimate band, not a guaranteed appraisal interval.
-MODEL_RMSE = 38_076.30
+def _registered_model_paths(version=None):
+    """Resolve the configured model version without allowing paths outside mlmodels."""
+    model_dir = (Path(settings.BASE_DIR) / "mlmodels").resolve()
+    registry_path = model_dir / "model_registry.json"
+    if not registry_path.exists():
+        return model_dir / "trained_models.pkl", model_dir / "metadata.json", "legacy"
+
+    with registry_path.open(encoding="utf-8") as registry_file:
+        registry = json.load(registry_file)
+    selected = version or getattr(settings, "MODEL_VERSION", "") or registry["active_version"]
+    try:
+        entry = registry["models"][selected]
+    except KeyError as error:
+        raise RuntimeError(f"Unknown model version: {selected}") from error
+
+    artifact_path = (model_dir / entry["artifact"]).resolve()
+    metadata_path = (model_dir / entry["metadata"]).resolve()
+    if model_dir not in artifact_path.parents or model_dir not in metadata_path.parents:
+        raise RuntimeError("Model registry paths must stay inside the mlmodels directory.")
+    return artifact_path, metadata_path, selected
 
 
-class PredictionInputError(ValueError):
-    """Raised when a prediction request is incomplete or invalid."""
+def _file_sha256(path):
+    digest = sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-@lru_cache(maxsize=1)
-def load_models():
-    """Load the deployed ensemble once per web process."""
-    model_path = Path(settings.BASE_DIR) / "mlmodels" / "trained_models.pkl"
+def _verify_registered_checksum(path, selected_version, checksum_field):
+    registry_path = Path(settings.BASE_DIR) / "mlmodels" / "model_registry.json"
+    if not registry_path.exists():
+        return
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    expected = registry.get("models", {}).get(selected_version, {}).get(checksum_field)
+    if expected and not hmac.compare_digest(_file_sha256(path), expected):
+        raise RuntimeError(f"Registered {checksum_field} does not match {path.name}.")
+
+
+@lru_cache(maxsize=None)
+def load_models(version=None):
+    """Load the deployed model bundle once per web process."""
+    model_path, _, selected_version = _registered_model_paths(version)
+    _verify_registered_checksum(model_path, selected_version, "artifact_sha256")
     model_bundle = joblib.load(model_path)
     if not isinstance(model_bundle, dict):
-        raise RuntimeError("The model artifact must contain a dictionary of models.")
+        raise RuntimeError("The model artifact must contain a dictionary of model settings.")
+
+    if "best_model" in model_bundle:
+        loaded = {
+            "model": model_bundle["best_model"],
+            "feature_names": model_bundle.get("feature_names", FEATURE_NAMES),
+            "tier_mapping": model_bundle.get("tier_mapping", {}),
+            "model_version": model_bundle.get("model_version", selected_version),
+            "comparables": model_bundle.get("comparables"),
+            "required_features": model_bundle.get("required_features", FEATURE_NAMES),
+            "optional_features": model_bundle.get("optional_features", ()),
+        }
+        logger.info("Model loaded", extra={"event": "model_loaded", "model_version": loaded["model_version"]})
+        return loaded
 
     elastic_net = model_bundle.get("best_elastic_net")
     gradient_boost = model_bundle.get("best_gboost")
     if elastic_net is None or gradient_boost is None:
-        raise RuntimeError("The model artifact is missing the required ensemble models.")
-    return elastic_net, gradient_boost
+        raise RuntimeError("The model artifact is missing the required model bundle.")
+    return {
+        "model": gradient_boost,
+        "feature_names": FEATURE_NAMES,
+        "tier_mapping": {},
+        "model_version": selected_version,
+    }
+
+
+@lru_cache(maxsize=None)
+def model_metadata(version=None):
+    """Return safe, user-facing metadata generated by the training script."""
+    _, metadata_path, selected_version = _registered_model_paths(version)
+    _verify_registered_checksum(metadata_path, selected_version, "metadata_sha256")
+    with metadata_path.open(encoding="utf-8") as metadata_file:
+        return json.load(metadata_file)
 
 
 @lru_cache(maxsize=1)
-def model_metadata():
-    """Return safe, user-facing metadata generated by the training script."""
-    metadata_path = Path(settings.BASE_DIR) / "mlmodels" / "metadata.json"
-    with metadata_path.open(encoding="utf-8") as metadata_file:
-        return json.load(metadata_file)
+def comparable_data():
+    """Load privacy-safe comparable records bundled with the active model."""
+    bundled = load_models().get("comparables")
+    if bundled:
+        return pd.DataFrame(bundled)
+    path = Path(settings.BASE_DIR).parent / "data" / "Seattle" / "train_cleaned.csv"
+    return pd.read_csv(path, usecols=[*FEATURE_NAMES, "price"])
 
 
 @lru_cache(maxsize=1)
@@ -72,71 +147,236 @@ def harris_metadata():
 
 
 def build_input_frame(payload):
-    if not isinstance(payload, dict):
-        raise PredictionInputError("The request body must be a JSON object.")
+    values = validate_prediction_payload(payload)
+    metadata = model_metadata()
+    feature_names = metadata.get("features", list(FEATURE_NAMES))
+    defaults = metadata.get("feature_defaults", {})
+    combined = {name: defaults.get(name, np.nan) for name in feature_names}
+    combined.update(values)
+    now = datetime.now(timezone.utc)
+    if "sale_year" in feature_names:
+        combined["sale_year"] = now.year
+    if "sale_month" in feature_names:
+        combined["sale_month"] = now.month
+    return pd.DataFrame([combined], columns=feature_names)
 
-    missing = [name for name in FEATURE_NAMES if name not in payload]
-    if missing:
-        raise PredictionInputError(f"Missing features: {', '.join(missing)}")
 
-    values = {}
-    for name in FEATURE_NAMES:
-        try:
-            value = float(payload[name])
-        except (TypeError, ValueError):
-            raise PredictionInputError(f"{name} must be a number.") from None
-        if value < 0:
-            raise PredictionInputError(f"{name} cannot be negative.")
-        if name in INTEGER_FEATURES and not value.is_integer():
-            raise PredictionInputError(f"{name} must be a whole number.")
-        values[name] = int(value) if name in INTEGER_FEATURES else value
+def engineer_features_for_inference(df, tier_mapping=None, feature_names=None):
+    """
+    Engineer features on raw input data for inference.
+    Mirrors the feature engineering done during training.
+    """
+    requested_features = list(feature_names or [])
+    forbidden = {"price_per_sqft", "is_price_anomaly"}.intersection(requested_features)
+    if forbidden:
+        raise RuntimeError(
+            "The selected model requires target-derived features that are unavailable "
+            f"during inference: {', '.join(sorted(forbidden))}"
+        )
 
-    if not 1 <= values["OverallQual"] <= 10:
-        raise PredictionInputError("OverallQual must be between 1 and 10.")
-    if not 1 <= values["OverallCond"] <= 10:
-        raise PredictionInputError("OverallCond must be between 1 and 10.")
-    for name in ("SaleType_WD", "ExterQual_Gd", "ExterCond_Fa", "BsmtFinType1_LwQ"):
-        if values[name] not in (0, 1):
-            raise PredictionInputError(f"{name} must be 0 or 1.")
+    df_eng = df.copy()
 
-    return pd.DataFrame([values], columns=FEATURE_NAMES)
+    # Target-derived features such as price_per_sqft and price anomaly are
+    # intentionally excluded: the sale price is unknown at inference time.
+
+    # 2. Lot-to-house ratio
+    df_eng['has_lot_data'] = (df_eng['lot_size'] > 0).astype(int)
+    df_eng['lot_to_house_ratio'] = (df_eng['lot_size'] / df_eng['size']).clip(lower=0, upper=100)
+
+    # 3. Beds + Baths
+    df_eng['beds_plus_baths'] = df_eng['beds'] + df_eng['baths']
+
+    # 4. ZIP tier (use mapping from training data)
+    if tier_mapping and "zip_to_tier_map" in tier_mapping:
+        zip_map = tier_mapping["zip_to_tier_map"]
+        df_eng['zip_tier'] = df_eng['zip_code'].map(
+            lambda z: zip_map.get(int(z), 2)  # Default to tier 2 if unknown ZIP
+        )
+    else:
+        # Fallback: assign tier based on ZIP code value
+        df_eng['zip_tier'] = df_eng['zip_code'].apply(
+            lambda z: 3 if z >= 98112 else (2 if z >= 98105 else 1)
+        )
+
+    # 5. Size categories (one-hot encoded)
+    size_bins = [0, 1000, 2000, 3500, 50000]
+    size_labels = [0, 1, 2, 3]  # Will be one-hot encoded
+    df_eng['size_cat'] = pd.cut(df_eng['size'], bins=size_bins, labels=size_labels, include_lowest=True).astype(int)
+    df_eng['size_medium'] = (df_eng['size_cat'] >= 1).astype(int)
+    df_eng['size_large'] = (df_eng['size_cat'] >= 2).astype(int)
+    df_eng['size_xlarge'] = (df_eng['size_cat'] >= 3).astype(int)
+
+    # 6. Tier one-hot encoding
+    df_eng['tier_2'] = (df_eng['zip_tier'] >= 2).astype(int)
+    df_eng['tier_3'] = (df_eng['zip_tier'] >= 3).astype(int)
+
+    # 7. Small unit flag
+    df_eng['is_small_unit'] = ((df_eng['beds'] <= 2) & (df_eng['size'] < 1200)).astype(int)
+
+    df_eng = df_eng.drop(columns=['zip_tier', 'size_cat'], errors='ignore')
+    return df_eng[requested_features] if requested_features else df_eng
 
 
 def predict_price(payload):
     features = build_input_frame(payload)
-    elastic_net, gradient_boost = load_models()
-    # The reproducible evaluation in ml/train.py selects Gradient Boosting as
-    # the deployed model. Its held-out error is lower than the 50/50 ensemble.
-    return float(gradient_boost.predict(features)[0])
+    model_bundle = load_models()
+
+    model = model_bundle["model"]
+    return float(model.predict(features)[0])
 
 
 def estimate_details(payload):
     """Return a prediction, transparent uncertainty band, and input confidence."""
-    features = build_input_frame(payload)
-    _, gradient_boost = load_models()
-    prediction = float(gradient_boost.predict(features)[0])
+    input_frame = build_input_frame(payload)
+    features = input_frame
+    model_bundle = load_models()
+
+    model = model_bundle["model"]
+    prediction = float(model.predict(features)[0])
     values = features.iloc[0]
     metadata = model_metadata()
+
+    # Get typical ranges for confidence assessment (use base features for typical ranges)
+    base_features = ["beds", "baths", "size", "lot_size", "zip_code"]
     unusual = [
-        name for name, bounds in metadata["typical_feature_ranges"].items()
-        if not bounds["minimum"] <= values[name] <= bounds["maximum"]
+        name for name in base_features
+        if name in values.index and name in metadata.get("typical_feature_ranges", {})
+        and metadata["typical_feature_ranges"][name] is not None
     ]
+
+    typical_ranges = metadata.get("typical_feature_ranges", {})
+    unusual = [
+        name for name in unusual
+        if not typical_ranges[name].get("p05", typical_ranges[name]["minimum"]) <= float(values[name])
+        <= typical_ranges[name].get("p95", typical_ranges[name]["maximum"])
+    ]
+
     if len(unusual) == 0:
         level, message = "High", "All entered values are within typical ranges seen during training."
     elif len(unusual) <= 2:
         level, message = "Medium", "Some entered values are uncommon in the training data."
     else:
         level, message = "Low", "Several entered values are outside typical training ranges."
+
+    metrics = metadata.get("metrics") or metadata.get("ridge_results") or metadata.get("gradient_boost_results", {})
+    model_rmse = float(metrics.get("rmse", metrics.get("test_rmse", 0)))
+    interval = metadata.get("prediction_interval")
+    if interval:
+        low = max(0, prediction + float(interval["lower_residual_quantile"]))
+        high = prediction + float(interval["upper_residual_quantile"])
+        prediction_range = {
+            "low": low,
+            "high": high,
+            "margin": max(prediction - low, high - prediction),
+            "method": interval["method"],
+            "nominal_coverage": interval["nominal_coverage"],
+        }
+    else:
+        prediction_range = {
+            "low": max(0, prediction - model_rmse),
+            "high": prediction + model_rmse,
+            "margin": model_rmse,
+            "method": "symmetric held-out RMSE",
+        }
+    explanation = explain_prediction(model, input_frame, metadata)
+    comparables = find_comparable_properties(input_frame, metadata)
     return {
         "prediction": prediction,
-        "range": {
-            "low": max(0, prediction - MODEL_RMSE),
-            "high": prediction + MODEL_RMSE,
-            "margin": MODEL_RMSE,
-        },
+        "range": prediction_range,
         "confidence": {"level": level, "message": message, "unusual_features": unusual},
-        "model_factors": metadata.get("feature_importance", [])[:3],
+        "model_factors": explanation["top_factors"],
+        "explanation": explanation,
+        "comparables": comparables,
+        "model_version": model_bundle["model_version"],
     }
+
+
+def explain_prediction(model, input_frame, metadata):
+    """Estimate additive local Shapley values with deterministic permutations."""
+    reference = metadata.get("explanation_reference")
+    if not reference:
+        return {"method": "unavailable", "top_factors": []}
+
+    current = input_frame.iloc[0].to_dict()
+    feature_names = list(metadata.get("features", input_frame.columns))
+    feature_count = len(feature_names)
+    permutation_count = 128 if feature_count > 5 else math.factorial(feature_count)
+    rng = np.random.default_rng(42)
+    rows = []
+    permutations = []
+    for _ in range(permutation_count):
+        order = rng.permutation(feature_count)
+        permutations.append(order)
+        row = {name: reference.get(name, current[name]) for name in feature_names}
+        rows.append(dict(row))
+        for index in order:
+            row[feature_names[index]] = current[feature_names[index]]
+            rows.append(dict(row))
+    path_predictions = model.predict(pd.DataFrame(rows, columns=feature_names)).reshape(
+        permutation_count, feature_count + 1
+    )
+    contribution_totals = np.zeros(feature_count, dtype=float)
+    for permutation_index, order in enumerate(permutations):
+        deltas = np.diff(path_predictions[permutation_index])
+        for step, feature_index in enumerate(order):
+            contribution_totals[feature_index] += deltas[step]
+
+    contributions = []
+    for index, feature in enumerate(feature_names):
+        contribution = contribution_totals[index] / permutation_count
+        contributions.append({
+            "feature": feature,
+            "label": FEATURE_LABELS.get(feature, feature.replace("_", " ").title()),
+            "value": current[feature],
+            "reference_value": reference.get(feature),
+            "contribution": float(contribution),
+            "direction": "increased" if contribution >= 0 else "decreased",
+        })
+    contributions.sort(key=lambda item: abs(item["contribution"]), reverse=True)
+    return {
+        "method": f"permutation Shapley values ({permutation_count} deterministic paths)",
+        "base_value": float(path_predictions[:, 0].mean()),
+        "prediction": float(path_predictions[:, -1].mean()),
+        "reference": reference,
+        "top_factors": contributions,
+    }
+
+
+def find_comparable_properties(input_frame, metadata, limit=5):
+    """Return nearest historical records; these are not verified live comparables."""
+    data = comparable_data().copy()
+    query = input_frame.iloc[0]
+    ranges = metadata.get("typical_feature_ranges", {})
+
+    distance = np.zeros(len(data), dtype=float)
+    for feature, weight in (("beds", 1.0), ("baths", 1.0)):
+        bounds = ranges.get(feature, {})
+        scale = max(float(bounds.get("p95", data[feature].max())) - float(bounds.get("p05", data[feature].min())), 1.0)
+        distance += weight * np.abs(data[feature].to_numpy(dtype=float) - float(query[feature])) / scale
+    for feature, weight in (("size", 2.0), ("lot_size", 0.5)):
+        values = np.log1p(data[feature].to_numpy(dtype=float))
+        query_value = math.log1p(float(query[feature]))
+        scale = max(float(np.quantile(values, 0.95) - np.quantile(values, 0.05)), 1.0)
+        distance += weight * np.abs(values - query_value) / scale
+    distance += (data["zip_code"].to_numpy(dtype=int) != int(query["zip_code"])) * 2.0
+
+    nearest = np.argsort(distance)[:limit]
+    results = []
+    for index in nearest:
+        row = data.iloc[index]
+        results.append({
+            "price": float(row["price"]),
+            "beds": int(row["beds"]),
+            "baths": float(row["baths"]),
+            "size": float(row["size"]),
+            "lot_size": float(row["lot_size"]),
+            "zip_code": int(row["zip_code"]),
+            "similarity": float(1 / (1 + distance[index])),
+            "source": "King County Assessor historical sale",
+            "sale_date": row.get("sale_date"),
+            "year_built": int(row["year_built"]) if "year_built" in row else None,
+        })
+    return results
 
 
 def harris_estimate(payload):

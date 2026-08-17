@@ -1,0 +1,88 @@
+{
+  "data_path": "data\\Seattle\\train_cleaned.csv",
+  "rows": 2007,
+  "columns": [
+    "beds",
+    "baths",
+    "size",
+    "lot_size",
+    "zip_code",
+    "price"
+  ],
+  "validation": {
+    "stage": "cleaned",
+    "rows": 2007,
+    "columns": [
+      "beds",
+      "baths",
+      "size",
+      "lot_size",
+      "zip_code",
+      "price"
+    ],
+    "missing_columns": [],
+    "extra_columns": [],
+    "duplicate_rows": 0,
+    "missing_by_column": {
+      "beds": 0,
+      "baths": 0,
+      "size": 0,
+      "lot_size": 0,
+      "zip_code": 0,
+      "price": 0
+    },
+    "errors": [],
+    "warnings": [],
+    "ranges": {
+      "beds": {
+        "minimum": 1.0,
+        "median": 3.0,
+        "maximum": 15.0
+      },
+      "baths": {
+        "minimum": 0.5,
+        "median": 2.0,
+        "maximum": 9.0
+      },
+      "size": {
+        "minimum": 250.0,
+        "median": 1560.0,
+        "maximum": 11010.0
+      },
+      "lot_size": {
+        "minimum": 0.0,
+        "median": 4264.0,
+        "maximum": 10890000.0
+      },
+      "zip_code": {
+        "minimum": 98101.0,
+        "median": 98117.0,
+        "maximum": 98199.0
+      },
+      "price": {
+        "minimum": 159000.0,
+        "median": 800000.0,
+        "maximum": 25000000.0
+      }
+    },
+    "target": {
+      "skew": 16.90600580582904,
+      "p01": 275300.0,
+      "p99": 3197000.000000003,
+      "iqr_outliers_3x": 43
+    },
+    "valid": true
+  },
+  "price": {
+    "minimum": 159000.0,
+    "median": 800000.0,
+    "mean": 964070.0069755855,
+    "maximum": 25000000.0,
+    "skew": 16.90600580582904,
+    "log1p_skew": 0.5356639620888196,
+    "three_iqr_upper_boundary": 2636000.0,
+    "three_iqr_outlier_count": 43
+  },
+  "missing_lot_indicator_count": 347,
+  "unique_zip_codes": 28
+}

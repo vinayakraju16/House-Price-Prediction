@@ -1,0 +1,35 @@
+services:
+  database:
+    image: postgres:17.10-alpine3.23
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-house_price}
+      POSTGRES_USER: ${POSTGRES_USER:-house_price}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting PostgreSQL}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  backend:
+    environment:
+      DJANGO_DB_ENGINE: postgresql
+      POSTGRES_DB: ${POSTGRES_DB:-house_price}
+      POSTGRES_USER: ${POSTGRES_USER:-house_price}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting PostgreSQL}
+      POSTGRES_HOST: database
+      POSTGRES_PORT: "5432"
+      POSTGRES_CONN_MAX_AGE: ${POSTGRES_CONN_MAX_AGE:-60}
+      POSTGRES_SSLMODE: disable
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

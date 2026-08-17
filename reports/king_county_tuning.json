@@ -1,0 +1,183 @@
+{
+  "selection_policy": "12-iteration RandomizedSearchCV using five-fold GroupKFold RMSE",
+  "best_params": {
+    "regressor__regressor__min_samples_leaf": 20,
+    "regressor__regressor__max_leaf_nodes": 31,
+    "regressor__regressor__max_iter": 400,
+    "regressor__regressor__max_bins": 127,
+    "regressor__regressor__learning_rate": 0.1,
+    "regressor__regressor__l2_regularization": 40.0
+  },
+  "best_cv_rmse": 210053.3910305765,
+  "holdout": {
+    "rows": 8637,
+    "mae": 149332.51925733808,
+    "rmse": 289584.66077809385,
+    "r2": 0.8320299506533289
+  },
+  "prediction_interval": {
+    "method": "2025-2026 temporal-holdout residual quantiles",
+    "nominal_coverage": 0.9,
+    "lower_residual_quantile": -231326.6529729905,
+    "upper_residual_quantile": 423415.60549707233,
+    "empirical_coverage": 0.899965265717263
+  },
+  "trials": [
+    {
+      "rank": 4,
+      "mean_cv_rmse": 210966.01786455247,
+      "std_cv_rmse": 30960.13203564807,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 63,
+        "regressor__regressor__max_iter": 200,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.1,
+        "regressor__regressor__l2_regularization": 20.0
+      }
+    },
+    {
+      "rank": 3,
+      "mean_cv_rmse": 210879.12401601748,
+      "std_cv_rmse": 30333.38128030467,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 20,
+        "regressor__regressor__max_leaf_nodes": 63,
+        "regressor__regressor__max_iter": 400,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.1,
+        "regressor__regressor__l2_regularization": 10.0
+      }
+    },
+    {
+      "rank": 6,
+      "mean_cv_rmse": 212128.31971313996,
+      "std_cv_rmse": 31369.202047509378,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 63,
+        "regressor__regressor__max_iter": 400,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.05,
+        "regressor__regressor__l2_regularization": 40.0
+      }
+    },
+    {
+      "rank": 5,
+      "mean_cv_rmse": 211392.7517473464,
+      "std_cv_rmse": 28982.191131141193,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 300,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.1,
+        "regressor__regressor__l2_regularization": 20.0
+      }
+    },
+    {
+      "rank": 7,
+      "mean_cv_rmse": 213213.2726280746,
+      "std_cv_rmse": 30020.404301655828,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 80,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 300,
+        "regressor__regressor__max_bins": 127,
+        "regressor__regressor__learning_rate": 0.1,
+        "regressor__regressor__l2_regularization": 20.0
+      }
+    },
+    {
+      "rank": 10,
+      "mean_cv_rmse": 222039.602713901,
+      "std_cv_rmse": 29367.328470960827,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 20,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 200,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.07,
+        "regressor__regressor__l2_regularization": 20.0
+      }
+    },
+    {
+      "rank": 8,
+      "mean_cv_rmse": 219509.31589612382,
+      "std_cv_rmse": 29785.916754916514,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 30,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 300,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.05,
+        "regressor__regressor__l2_regularization": 1.0
+      }
+    },
+    {
+      "rank": 2,
+      "mean_cv_rmse": 210203.2839045127,
+      "std_cv_rmse": 28999.604189978316,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 63,
+        "regressor__regressor__max_iter": 400,
+        "regressor__regressor__max_bins": 127,
+        "regressor__regressor__learning_rate": 0.07,
+        "regressor__regressor__l2_regularization": 5.0
+      }
+    },
+    {
+      "rank": 11,
+      "mean_cv_rmse": 222516.42797865043,
+      "std_cv_rmse": 29525.31803607242,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 300,
+        "regressor__regressor__max_bins": 127,
+        "regressor__regressor__learning_rate": 0.05,
+        "regressor__regressor__l2_regularization": 40.0
+      }
+    },
+    {
+      "rank": 12,
+      "mean_cv_rmse": 227509.96088870274,
+      "std_cv_rmse": 29966.55641619584,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 50,
+        "regressor__regressor__max_leaf_nodes": 31,
+        "regressor__regressor__max_iter": 200,
+        "regressor__regressor__max_bins": 255,
+        "regressor__regressor__learning_rate": 0.035,
+        "regressor__regressor__l2_regularization": 5.0
+      }
+    },
+    {
+      "rank": 9,
+      "mean_cv_rmse": 221996.20473393417,
+      "std_cv_rmse": 30126.042937949787,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 80,
+        "regressor__regressor__max_leaf_nodes": 15,
+        "regressor__regressor__max_iter": 300,
+        "regressor__regressor__max_bins": 127,
+        "regressor__regressor__learning_rate": 0.05,
+        "regressor__regressor__l2_regularization": 1.0
+      }
+    },
+    {
+      "rank": 1,
+      "mean_cv_rmse": 210053.3910305765,
+      "std_cv_rmse": 30166.65076873532,
+      "params": {
+        "regressor__regressor__min_samples_leaf": 20,
+        "regressor__regressor__max_leaf_nodes": 31,
+        "regressor__regressor__max_iter": 400,
+        "regressor__regressor__max_bins": 127,
+        "regressor__regressor__learning_rate": 0.1,
+        "regressor__regressor__l2_regularization": 40.0
+      }
+    }
+  ]
+}

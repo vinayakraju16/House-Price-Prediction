@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-compose-secret-change-before-deployment-7f1d89c5a321}
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      CSRF_TRUSTED_ORIGINS: http://localhost:3000
+      DJANGO_DB_PATH: /app/runtime/db.sqlite3
+      DJANGO_SECURE_SSL_REDIRECT: "false"
+      DJANGO_SECURE_COOKIES: "false"
+      DJANGO_HSTS_SECONDS: "0"
+      MONITORING_API_KEY: ${MONITORING_API_KEY:-local-monitoring-key}
+    volumes:
+      - backend_runtime:/app/runtime
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+volumes:
+  backend_runtime:

@@ -1,0 +1,436 @@
+{
+  "phase": "Phase 0: Data Preparation",
+  "dataset": "Seattle residential listings",
+  "timestamp": "2026-08-16T13:50:50.121423",
+  "train": {
+    "raw": {
+      "rows": 2016,
+      "cols": 8,
+      "duplicates": "9",
+      "duplicate_full_rows": "9",
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "size_units": 0,
+        "lot_size": 347,
+        "lot_size_units": 347,
+        "zip_code": 0,
+        "price": 0
+      },
+      "dtypes": {
+        "beds": "int64",
+        "baths": "float64",
+        "size": "float64",
+        "size_units": "object",
+        "lot_size": "float64",
+        "lot_size_units": "object",
+        "zip_code": "int64",
+        "price": "float64"
+      }
+    },
+    "cleaned_rows": 2007,
+    "outliers": {
+      "price": {
+        "q1": 600000.0,
+        "q3": 1109000.0,
+        "iqr": 509000.0,
+        "lower_bound": -927000.0,
+        "upper_bound": 2636000.0,
+        "outlier_count": 43,
+        "outlier_rows": [
+          7,
+          61,
+          74,
+          186,
+          232,
+          280,
+          321,
+          357,
+          417,
+          510,
+          518,
+          557,
+          630,
+          637,
+          668,
+          805,
+          815,
+          833,
+          893,
+          904,
+          964,
+          1019,
+          1039,
+          1135,
+          1173,
+          1178,
+          1190,
+          1242,
+          1279,
+          1359,
+          1480,
+          1544,
+          1616,
+          1640,
+          1646,
+          1658,
+          1700,
+          1773,
+          1934,
+          1945,
+          1960,
+          1979,
+          1998
+        ]
+      },
+      "size": {
+        "outlier_count": 6,
+        "min": 250.0,
+        "max": 11010.0,
+        "mean": 1738.7708021923268
+      },
+      "beds": {
+        "max": 15.0,
+        "count_gt_10": 2
+      },
+      "baths": {
+        "max": 9.0,
+        "count_gt_8": 2
+      }
+    },
+    "raw_validation": {
+      "stage": "raw",
+      "rows": 2016,
+      "columns": [
+        "beds",
+        "baths",
+        "size",
+        "size_units",
+        "lot_size",
+        "lot_size_units",
+        "zip_code",
+        "price"
+      ],
+      "missing_columns": [],
+      "extra_columns": [],
+      "duplicate_rows": 9,
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "size_units": 0,
+        "lot_size": 347,
+        "lot_size_units": 347,
+        "zip_code": 0,
+        "price": 0
+      },
+      "errors": [],
+      "warnings": [
+        "Found 9 exact duplicate rows"
+      ],
+      "ranges": {
+        "beds": {
+          "minimum": 1.0,
+          "median": 3.0,
+          "maximum": 15.0
+        },
+        "baths": {
+          "minimum": 0.5,
+          "median": 2.0,
+          "maximum": 9.0
+        },
+        "size": {
+          "minimum": 250.0,
+          "median": 1560.0,
+          "maximum": 11010.0
+        },
+        "lot_size": {
+          "minimum": 0.23,
+          "median": 4000.0,
+          "maximum": 9998.0
+        },
+        "zip_code": {
+          "minimum": 98101.0,
+          "median": 98117.0,
+          "maximum": 98199.0
+        },
+        "price": {
+          "minimum": 159000.0,
+          "median": 800000.0,
+          "maximum": 25000000.0
+        }
+      },
+      "target": {
+        "skew": 16.940478582069115,
+        "p01": 275750.0,
+        "p99": 3192499.9999999953,
+        "iqr_outliers_3x": 44
+      },
+      "valid": true
+    },
+    "cleaned_validation": {
+      "stage": "cleaned",
+      "rows": 2007,
+      "columns": [
+        "beds",
+        "baths",
+        "size",
+        "lot_size",
+        "zip_code",
+        "price"
+      ],
+      "missing_columns": [],
+      "extra_columns": [],
+      "duplicate_rows": 0,
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "lot_size": 0,
+        "zip_code": 0,
+        "price": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "ranges": {
+        "beds": {
+          "minimum": 1.0,
+          "median": 3.0,
+          "maximum": 15.0
+        },
+        "baths": {
+          "minimum": 0.5,
+          "median": 2.0,
+          "maximum": 9.0
+        },
+        "size": {
+          "minimum": 250.0,
+          "median": 1560.0,
+          "maximum": 11010.0
+        },
+        "lot_size": {
+          "minimum": 0.0,
+          "median": 4264.0,
+          "maximum": 10890000.0
+        },
+        "zip_code": {
+          "minimum": 98101.0,
+          "median": 98117.0,
+          "maximum": 98199.0
+        },
+        "price": {
+          "minimum": 159000.0,
+          "median": 800000.0,
+          "maximum": 25000000.0
+        }
+      },
+      "target": {
+        "skew": 16.90600580582904,
+        "p01": 275300.0,
+        "p99": 3197000.000000003,
+        "iqr_outliers_3x": 43
+      },
+      "valid": true
+    }
+  },
+  "test": {
+    "raw": {
+      "rows": 505,
+      "cols": 8,
+      "duplicates": "1",
+      "duplicate_full_rows": "1",
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "size_units": 0,
+        "lot_size": 77,
+        "lot_size_units": 77,
+        "zip_code": 0,
+        "price": 0
+      },
+      "dtypes": {
+        "beds": "int64",
+        "baths": "float64",
+        "size": "float64",
+        "size_units": "object",
+        "lot_size": "float64",
+        "lot_size_units": "object",
+        "zip_code": "int64",
+        "price": "float64"
+      }
+    },
+    "cleaned_rows": 504,
+    "outliers": {
+      "price": {
+        "q1": 619742.5,
+        "q3": 1156250.0,
+        "iqr": 536507.5,
+        "lower_bound": -989780.0,
+        "upper_bound": 2765772.5,
+        "outlier_count": 10,
+        "outlier_rows": [
+          56,
+          89,
+          117,
+          143,
+          259,
+          280,
+          325,
+          498,
+          500,
+          502
+        ]
+      },
+      "size": {
+        "outlier_count": 1,
+        "min": 376.0,
+        "max": 6139.0,
+        "mean": 1854.7718253968253
+      },
+      "beds": {
+        "max": 9.0,
+        "count_gt_10": 0
+      },
+      "baths": {
+        "max": 7.0,
+        "count_gt_8": 0
+      }
+    },
+    "raw_validation": {
+      "stage": "raw",
+      "rows": 505,
+      "columns": [
+        "beds",
+        "baths",
+        "size",
+        "size_units",
+        "lot_size",
+        "lot_size_units",
+        "zip_code",
+        "price"
+      ],
+      "missing_columns": [],
+      "extra_columns": [],
+      "duplicate_rows": 1,
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "size_units": 0,
+        "lot_size": 77,
+        "lot_size_units": 77,
+        "zip_code": 0,
+        "price": 0
+      },
+      "errors": [],
+      "warnings": [
+        "Found 1 exact duplicate rows"
+      ],
+      "ranges": {
+        "beds": {
+          "minimum": 1.0,
+          "median": 3.0,
+          "maximum": 9.0
+        },
+        "baths": {
+          "minimum": 1.0,
+          "median": 2.0,
+          "maximum": 7.0
+        },
+        "size": {
+          "minimum": 376.0,
+          "median": 1690.0,
+          "maximum": 6139.0
+        },
+        "lot_size": {
+          "minimum": 0.23,
+          "median": 4190.0,
+          "maximum": 9974.0
+        },
+        "zip_code": {
+          "minimum": 98101.0,
+          "median": 98118.0,
+          "maximum": 98199.0
+        },
+        "price": {
+          "minimum": 170000.0,
+          "median": 840000.0,
+          "maximum": 6250000.0
+        }
+      },
+      "target": {
+        "skew": 2.8932066919535355,
+        "p01": 262080.0,
+        "p99": 3104800.0,
+        "iqr_outliers_3x": 10
+      },
+      "valid": true
+    },
+    "cleaned_validation": {
+      "stage": "cleaned",
+      "rows": 504,
+      "columns": [
+        "beds",
+        "baths",
+        "size",
+        "lot_size",
+        "zip_code",
+        "price"
+      ],
+      "missing_columns": [],
+      "extra_columns": [],
+      "duplicate_rows": 0,
+      "missing_by_column": {
+        "beds": 0,
+        "baths": 0,
+        "size": 0,
+        "lot_size": 0,
+        "zip_code": 0,
+        "price": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "ranges": {
+        "beds": {
+          "minimum": 1.0,
+          "median": 3.0,
+          "maximum": 9.0
+        },
+        "baths": {
+          "minimum": 1.0,
+          "median": 2.0,
+          "maximum": 7.0
+        },
+        "size": {
+          "minimum": 376.0,
+          "median": 1690.0,
+          "maximum": 6139.0
+        },
+        "lot_size": {
+          "minimum": 0.0,
+          "median": 4500.0,
+          "maximum": 176853.59999999998
+        },
+        "zip_code": {
+          "minimum": 98101.0,
+          "median": 98118.0,
+          "maximum": 98199.0
+        },
+        "price": {
+          "minimum": 170000.0,
+          "median": 840000.0,
+          "maximum": 6250000.0
+        }
+      },
+      "target": {
+        "skew": 2.890567787938862,
+        "p01": 262060.0,
+        "p99": 3104850.0,
+        "iqr_outliers_3x": 10
+      },
+      "valid": true
+    }
+  }
+}

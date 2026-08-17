@@ -1,74 +1,55 @@
-# Frontend
+# HavenValue frontend
 
-React client for the house-price API. Install dependencies with `npm install` and start it with `npm start`.
+React 18 client built with Vite and tested with Vitest + Testing Library.
 
-Set `REACT_APP_API_URL` to the Django API origin when it is not `http://localhost:8000`.
+## Local development
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+```powershell
+npm ci
+npm start
+```
 
-## Available Scripts
+The development server listens on `http://localhost:3000`. The client uses
+`http://localhost:8000` as the default Django API origin. Override it before startup when needed:
 
-In the project directory, you can run:
+```powershell
+$env:VITE_API_URL = "https://api.example.com"
+npm start
+```
 
-### `npm start`
+Vite injects this value at build time; changing it after `npm run build` does not rewrite an existing bundle.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Verification
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```powershell
+npm run lint
+npm test
+npm run build
+```
 
-### `npm test`
+- `npm test` runs the suite once for CI.
+- `npm run test:watch` starts interactive watch mode.
+- `npm run build` writes the production assets to `dist/`.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Docker Compose builds with `VITE_API_URL=/api`, and Nginx proxies that same-origin path to Django.
 
-### `npm run build`
+## Browser end-to-end tests
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The Playwright suite uses the real Nginx and Django containers, including the active model artifact:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```powershell
+npx playwright install chromium
+cd ..
+docker compose up --build --detach --wait --wait-timeout 180
+cd frontend
+npm run test:e2e
+cd ..
+docker compose down
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Set `PLAYWRIGHT_BASE_URL` to test another running stack. Failure traces, screenshots, and videos are
+written under `test-results/` and are excluded from Git and Docker build contexts.
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+With the same stack running, `npm run screenshots` regenerates the reviewed desktop and mobile
+portfolio captures under `docs/screenshots/`. The capture fails on browser runtime or prediction
+request errors.

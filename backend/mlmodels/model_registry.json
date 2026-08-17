@@ -1,0 +1,29 @@
+{
+  "active_version": "3.0.0",
+  "models": {
+    "seattle-ridge-v1": {
+      "artifact": "versions/seattle-ridge-v1.pkl",
+      "metadata": "versions/seattle-ridge-v1.json",
+      "status": "rollback"
+    },
+    "2.2.0": {
+      "artifact": "versions/2.2.0/model.joblib",
+      "metadata": "versions/2.2.0/metadata.json",
+      "status": "rollback",
+      "model_type": "HistGradientBoostingRegressor",
+      "created_at": "2026-08-16T19:52:06.026165+00:00",
+      "artifact_sha256": "bc97e46b2d2034a43c4c3552e0c92a6c16ea31cb3138cd86b0dcf71d557c6cf4",
+      "metadata_sha256": "8593b6c6abc7957b19ae656cd00bb5859db6f7d4bd436365120fe0ba1f83631d"
+    },
+    "3.0.0": {
+      "artifact": "versions/3.0.0/model.joblib",
+      "metadata": "versions/3.0.0/metadata.json",
+      "status": "active",
+      "model_type": "HistGradientBoostingRegressor",
+      "created_at": "2026-08-17T00:56:40.487055+00:00",
+      "artifact_sha256": "c89a3dcac106134371082dc75b0245474ac4bd40e4ac84fdfe1e41ca75c94ff5",
+      "metadata_sha256": "44341ec37e0724db2ccbc482dba769d2de964910e84be1c847548c1de8f4ec56"
+    }
+  },
+  "updated_at": "2026-08-17T00:56:40.487055+00:00"
+}

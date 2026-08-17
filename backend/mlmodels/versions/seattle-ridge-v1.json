@@ -1,0 +1,117 @@
+{
+  "model_version": "seattle-ridge-v1",
+  "deployed_model_type": "Ridge Regression (\u03b1=10.0)",
+  "deployed_model": "ridge",
+  "metrics": {
+    "rmse": 408546.6,
+    "mae": 242730.74,
+    "mape": 0.2715,
+    "r2": 0.5492
+  },
+  "features": [
+    "beds",
+    "baths",
+    "size",
+    "lot_size",
+    "zip_code"
+  ],
+  "training_rows": 2007,
+  "test_rows": 504,
+  "dataset_rows": 2007,
+  "target_summary": {
+    "minimum": 159000.0,
+    "median": 800000.0,
+    "maximum": 25000000.0
+  },
+  "feature_importance": [
+    {
+      "feature": "categorical__zip_code_98105",
+      "coefficient": 756271.7584,
+      "abs_importance": 756271.7584
+    },
+    {
+      "feature": "numerical__size",
+      "coefficient": 430003.4154,
+      "abs_importance": 430003.4154
+    },
+    {
+      "feature": "categorical__zip_code_98168",
+      "coefficient": -340067.3159,
+      "abs_importance": 340067.3159
+    },
+    {
+      "feature": "categorical__zip_code_98112",
+      "coefficient": 291157.0903,
+      "abs_importance": 291157.0903
+    },
+    {
+      "feature": "categorical__zip_code_98102",
+      "coefficient": 228775.5991,
+      "abs_importance": 228775.5991
+    },
+    {
+      "feature": "categorical__zip_code_98178",
+      "coefficient": -212722.5623,
+      "abs_importance": 212722.5623
+    },
+    {
+      "feature": "categorical__zip_code_98146",
+      "coefficient": -208615.5015,
+      "abs_importance": 208615.5015
+    },
+    {
+      "feature": "categorical__zip_code_98118",
+      "coefficient": -183196.5873,
+      "abs_importance": 183196.5873
+    },
+    {
+      "feature": "categorical__zip_code_98106",
+      "coefficient": -168546.0188,
+      "abs_importance": 168546.0188
+    },
+    {
+      "feature": "categorical__zip_code_98101",
+      "coefficient": 166822.5885,
+      "abs_importance": 166822.5885
+    }
+  ],
+  "typical_feature_ranges": {
+    "beds": {
+      "minimum": 1.0,
+      "p05": 1.0,
+      "p95": 5.0,
+      "maximum": 15.0
+    },
+    "baths": {
+      "minimum": 0.5,
+      "p05": 1.0,
+      "p95": 3.5,
+      "maximum": 9.0
+    },
+    "size": {
+      "minimum": 250.0,
+      "p05": 635.3,
+      "p95": 3357.0,
+      "maximum": 11010.0
+    },
+    "lot_size": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 19035.72,
+      "maximum": 10890000.0
+    },
+    "zip_code": {
+      "minimum": 98101.0,
+      "p05": 98103.0,
+      "p95": 98178.0,
+      "maximum": 98199.0
+    }
+  },
+  "notes": "Phase 0 upgrade: switched from Gradient Boosting to Ridge after benchmarking 11 models. Ridge achieves R\u00b2=0.549 vs GB R\u00b2=-0.654. Data cleaned: removed 9 duplicates, standardized units, handled missing values.",
+  "ridge_results": {
+    "rmse": 408546.6,
+    "mae": 242730.74,
+    "mape": 0.2715,
+    "r2": 0.5492
+  }
+}

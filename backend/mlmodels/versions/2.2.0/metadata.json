@@ -1,0 +1,176 @@
+{
+  "model_version": "2.2.0",
+  "metadata_schema_version": "1.0",
+  "model_type": "HistGradientBoostingRegressor",
+  "deployed_model": "hist_gradient_boosting_log_target",
+  "deployed_model_type": "HistGradientBoosting with log-target transformation",
+  "status": "experimental",
+  "training_date": "2026-08-16T19:52:06.026165+00:00",
+  "target": "price",
+  "target_transform": {
+    "forward": "log1p",
+    "inverse": "expm1"
+  },
+  "features": [
+    "beds",
+    "baths",
+    "size",
+    "lot_size",
+    "zip_code"
+  ],
+  "feature_count": 5,
+  "engineered_features": [
+    "has_lot_data",
+    "lot_to_house_ratio",
+    "beds_plus_baths",
+    "sqft_per_bedroom",
+    "bathroom_bedroom_ratio",
+    "is_small_unit",
+    "size_category"
+  ],
+  "training_rows": 2007,
+  "test_rows": 504,
+  "dataset_rows": 2007,
+  "dataset_version": {
+    "train_path": "data/Seattle/train_cleaned.csv",
+    "train_sha256": "fdc6bdd21417f51c76958f58015b904083e50de00158fd5cc5701fc2a613d338",
+    "legacy_test_path": "data/Seattle/test_cleaned.csv",
+    "legacy_test_sha256": "83d4d16243204f4fbe3134991d9b57c23e58da5b7a4fb86b7b415794d2398082"
+  },
+  "metrics": {
+    "mae": 203812.7835827946,
+    "rmse": 366154.449875339,
+    "r2": 0.6378880565190184,
+    "evaluation_label": "legacy_holdout"
+  },
+  "nested_cv": {
+    "mae": {
+      "mean": 200665.95220609178,
+      "std": 38068.95701726903,
+      "folds": [
+        155881.51177480514,
+        238336.61523926127,
+        184089.5062444389,
+        252922.14269905613,
+        172099.98507289737
+      ]
+    },
+    "rmse": {
+      "mean": 666124.4476498967,
+      "std": 483073.5889064768,
+      "folds": [
+        246544.3484313104,
+        1250677.642382238,
+        283522.02997707354,
+        1264318.6615419977,
+        285559.55591686367
+      ]
+    },
+    "r2": {
+      "mean": 0.4950055119856117,
+      "std": 0.3112631544335172,
+      "folds": [
+        0.7349024782134848,
+        0.11639017824363895,
+        0.7445298588052242,
+        0.11163739536890938,
+        0.7675676492968009
+      ]
+    }
+  },
+  "prediction_interval": {
+    "method": "asymmetric empirical quantiles of five-fold out-of-fold residuals",
+    "nominal_coverage": 0.9,
+    "observed_oof_coverage": 0.8993522670652716,
+    "lower_residual_quantile": -314519.0848868436,
+    "upper_residual_quantile": 465332.20548476675
+  },
+  "baseline_comparison": {
+    "dummy_cv_mae": 384375.5,
+    "dummy_cv_rmse": 876816.24,
+    "ridge_cv_mae": 243887.93,
+    "ridge_cv_rmse": 693738.68,
+    "mae_improvement_over_ridge_percent": 17.722065127990636,
+    "rmse_improvement_over_ridge_percent": 3.9804948385036454
+  },
+  "hyperparameters": {
+    "regressor__regressor__min_samples_leaf": 30,
+    "regressor__regressor__max_leaf_nodes": 7,
+    "regressor__regressor__max_iter": 300,
+    "regressor__regressor__learning_rate": 0.05,
+    "regressor__regressor__l2_regularization": 0.0
+  },
+  "selection_policy": "Selected using bounded nested CV; legacy holdout not used for selection",
+  "target_summary": {
+    "minimum": 159000.0,
+    "median": 800000.0,
+    "maximum": 25000000.0
+  },
+  "typical_feature_ranges": {
+    "beds": {
+      "minimum": 1.0,
+      "p05": 1.0,
+      "p95": 5.0,
+      "maximum": 15.0
+    },
+    "baths": {
+      "minimum": 0.5,
+      "p05": 1.0,
+      "p95": 3.5,
+      "maximum": 9.0
+    },
+    "size": {
+      "minimum": 250.0,
+      "p05": 635.3,
+      "p95": 3356.999999999998,
+      "maximum": 11010.0
+    },
+    "lot_size": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 19035.71999999992,
+      "maximum": 10890000.0
+    },
+    "zip_code": {
+      "minimum": 98101.0,
+      "p05": 98103.0,
+      "p95": 98178.0,
+      "maximum": 98199.0
+    }
+  },
+  "explanation_reference": {
+    "beds": 3.0,
+    "baths": 2.0,
+    "size": 1560.0,
+    "lot_size": 4264.0,
+    "zip_code": 98115
+  },
+  "feature_importance": [],
+  "runtime": {
+    "python": "3.10.0",
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.4.2",
+    "joblib": "1.5.3",
+    "django": "5.2.16"
+  },
+  "artifact": {
+    "format": "joblib",
+    "sha256": "bc97e46b2d2034a43c4c3552e0c92a6c16ea31cb3138cd86b0dcf71d557c6cf4",
+    "relative_path": "backend/mlmodels/versions/2.2.0/model.joblib"
+  },
+  "experiment_tracking": {
+    "provider": "mlflow",
+    "enabled": false
+  },
+  "git": {
+    "commit": "31e480b520f881c207bc1c211f28e2a84addb002",
+    "dirty": true
+  },
+  "limitations": [
+    "Only five source fields are available.",
+    "Luxury homes above $2M are sparse and commonly underestimated.",
+    "The legacy test set was examined by older project phases.",
+    "This is an experimental estimate, not a formal appraisal."
+  ]
+}
