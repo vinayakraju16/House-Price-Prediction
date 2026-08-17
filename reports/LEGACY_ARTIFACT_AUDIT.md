@@ -1,7 +1,7 @@
 # Legacy Artifact Audit and Cleanup Record
 
-Audit and consolidation date: August 16, 2026  
-Method: reference search, schema comparison, file sizes, and SHA-256 hashing  
+Audit and consolidation date: August 16, 2026
+Method: reference search, schema comparison, file sizes, and SHA-256 hashing
 Safety: reversible archive moves; no file was permanently deleted
 
 ## Outcome
