@@ -1,5 +1,25 @@
 # HavenValue frontend
 
+## Cloudflare Pages
+
+Deploy this Vite application as a Cloudflare Pages project with these build settings:
+
+```text
+Root directory: frontend
+Build command: npm run build
+Build output directory: dist
+```
+
+The output directory is relative to the configured root directory. Do not publish the `frontend`
+source directory: its `index.html` references uncompiled JSX from `/src/index.jsx`. A correct
+deployment publishes `frontend/dist/index.html`, whose scripts and styles are compiled under
+`/assets/`.
+
+Set `VITE_API_URL` to the public backend origin before building. The value is embedded in the
+frontend bundle by Vite. Cloudflare Pages supplies its default single-page application fallback
+for React Router URLs such as `/house-price` and `/about` because this build has no top-level
+`404.html`.
+
 React 18 client built with Vite and tested with Vitest + Testing Library.
 
 ## Local development
