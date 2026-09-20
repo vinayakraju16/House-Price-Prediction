@@ -109,6 +109,48 @@ JSON metadata sidecar's recorded checksum was wrong.
 `backend/api/tests.py` against both SQLite and a local Postgres 17 container (26/26 each) all
 pass. The GitHub Actions run for this fix should be the first green CI run since August 16.
 
+## Stale end-to-end test, exposed for the first time by the checksum fix
+
+The `containers` CI job (Docker Compose + Playwright) has `needs: [python, frontend, postgres]`,
+so it was being **skipped** on every run for the past month — it never actually executed until
+the checksum fix above let `python` and `postgres` pass. The first real run then failed on two
+assertions in `frontend/e2e/valuation.spec.js` that had gone stale after the frontend and model
+moved on without an end-to-end run to catch it:
+
+1. `.recent-item` count under "What shaped this estimate" expected `5`, got `8`. The active King
+   County model has far more features than the older 5-field Seattle model, and
+   `Houseprice.jsx` deliberately caps the displayed permutation-Shapley factors at the top 8
+   (`.slice(0, 8)`) — 8 is the correct, intentional current behavior.
+2. `.comparable-item` count under a section headed "Similar historical records" expected `5`,
+   got `0` — not a data bug: the heading text itself had changed to "Similar historical sales"
+   in `Houseprice.jsx`, so the test's section locator matched nothing. The backend's
+   `find_comparable_properties(..., limit=5)` was returning 5 comparables correctly all along.
+
+**Fix:** updated both assertions in `valuation.spec.js` to match current, verified-correct
+behavior. Confirmed by building and running the real Docker Compose stack locally and running
+`npx playwright test` against it directly (both tests pass) — the same path the `containers` CI
+job takes.
+
+**Also observed, not fixed:** the backend container logs
+`[ERROR] Control server error: [Errno 13] Permission denied: '/home/appuser'` on gunicorn
+startup. It doesn't affect health checks or any tested request path (likely gunicorn touching
+`$HOME`, which points at a directory that doesn't exist because `backend/Dockerfile` creates its
+non-root user with `--no-create-home`) — worth a follow-up but not blocking.
+
+## Vercel build failure: unrelated project, same push
+
+While diagnosing the above, a build error surfaced from a separately-connected Vercel project:
+`uv lock` failing with `No `project` table found in: /vercel/path0/pyproject.toml`. This repo's
+root `pyproject.toml` only holds `[tool.ruff]` config for the Python/ML side — it was never meant
+to be an installable Python project. With no `vercel.json` in the repo, Vercel's zero-config
+detection was looking at the whole monorepo root, seeing that file plus `requirements.txt`, and
+trying to provision a Python runtime for them.
+
+**Fix:** added a root `vercel.json` pinning the build explicitly to `frontend/` (`npm run build
+--prefix frontend`, output `frontend/dist`, framework detection disabled) and a `.vercelignore`
+excluding `backend/`, `ml/`, and the Python requirement files from the deployment entirely, so no
+detector can pick them up again.
+
 ## Repository audit findings
 
 `PROJECT_AUDIT.md` (Aug 16) is stale in places: its "Current measured evidence" table and

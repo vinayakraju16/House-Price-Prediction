@@ -37,10 +37,12 @@ test('submits a valuation through Nginx and renders the enriched model response'
   const factorSection = page.locator('section').filter({
     has: page.getByRole('heading', { name: 'What shaped this estimate' }),
   });
-  await expect(factorSection.locator('.recent-item')).toHaveCount(5);
+  // The UI shows the top 8 permutation-Shapley factors (Houseprice.jsx caps at .slice(0, 8));
+  // the active King County model has more features than the legacy 5-field Seattle model did.
+  await expect(factorSection.locator('.recent-item')).toHaveCount(8);
 
   const comparableSection = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Similar historical records' }),
+    has: page.getByRole('heading', { name: 'Similar historical sales' }),
   });
   await expect(comparableSection.locator('.comparable-item')).toHaveCount(5);
 });
