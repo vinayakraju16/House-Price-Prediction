@@ -89,7 +89,7 @@ def main() -> None:
             for index in range(len(search.cv_results_["params"]))
         ],
     }
-    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
     joblib.dump(search.best_estimator_, MODEL_PATH)
     print(json.dumps({key: value for key, value in payload.items() if key != "trials"}, indent=2))
 

@@ -118,7 +118,7 @@ def main() -> None:
         "candidate_artifact": str(CANDIDATE_PATH.relative_to(ROOT)).replace("\\", "/"),
         "deployment_status": "candidate_only",
     }
-    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
     print(json.dumps({"nested_cv": payload["nested_cv"], "best_params": payload["best_params"], "legacy_test": payload["legacy_test"]}, indent=2))
 
 

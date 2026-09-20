@@ -132,7 +132,7 @@ def main() -> None:
         "results": results,
         "best": best,
     }
-    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    RESULT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
     pd.DataFrame(results).to_csv(TABLE_PATH, index=False)
     print(f"Wrote {RESULT_PATH.relative_to(ROOT)}", flush=True)
 

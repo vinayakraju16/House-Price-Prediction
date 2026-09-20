@@ -13,7 +13,7 @@
       "model_type": "HistGradientBoostingRegressor",
       "created_at": "2026-08-16T19:52:06.026165+00:00",
       "artifact_sha256": "bc97e46b2d2034a43c4c3552e0c92a6c16ea31cb3138cd86b0dcf71d557c6cf4",
-      "metadata_sha256": "8593b6c6abc7957b19ae656cd00bb5859db6f7d4bd436365120fe0ba1f83631d"
+      "metadata_sha256": "902de2a055b599006fb579c3da02636ad415612f3530077c4cc516f2662a798f"
     },
     "3.0.0": {
       "artifact": "versions/3.0.0/model.joblib",
@@ -22,7 +22,7 @@
       "model_type": "HistGradientBoostingRegressor",
       "created_at": "2026-08-17T00:56:40.487055+00:00",
       "artifact_sha256": "c89a3dcac106134371082dc75b0245474ac4bd40e4ac84fdfe1e41ca75c94ff5",
-      "metadata_sha256": "44341ec37e0724db2ccbc482dba769d2de964910e84be1c847548c1de8f4ec56"
+      "metadata_sha256": "245b9133a4296b8d27b2ec62db0c6d688b84a5cfc7d056a8eb976bb28a0e1d47"
     }
   },
   "updated_at": "2026-08-17T00:56:40.487055+00:00"

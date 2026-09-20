@@ -1,0 +1,13 @@
+# Normalize line endings to LF for all text files so checksums recorded in
+# backend/mlmodels/model_registry.json (computed against raw file bytes) are
+# identical whether the repo is checked out on Windows or Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.svg binary
+*.joblib binary
+*.pkl binary
+*.zip binary

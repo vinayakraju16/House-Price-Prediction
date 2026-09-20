@@ -181,10 +181,10 @@ def main() -> None:
         ].to_dict(orient="records"),
         "feature_importance": feature_importance,
     }
-    EVALUATION_PATH.write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
+    EVALUATION_PATH.write_text(json.dumps(evaluation, indent=2), encoding="utf-8", newline="\n")
     benchmark = json.loads(BENCHMARK_PATH.read_text(encoding="utf-8"))
     tuning = json.loads(TUNING_PATH.read_text(encoding="utf-8"))
-    REPORT_PATH.write_text(_render_report(evaluation, benchmark, tuning), encoding="utf-8")
+    REPORT_PATH.write_text(_render_report(evaluation, benchmark, tuning), encoding="utf-8", newline="\n")
 
     model.fit(data[MODEL_FEATURES], data["price"])
     recent_comparables = (
@@ -262,7 +262,7 @@ def main() -> None:
     }
     model_sha = _sha256(model_path)
     metadata["artifact"]["sha256"] = model_sha
-    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8", newline="\n")
     metadata_sha = _sha256(metadata_path)
 
     registry_path = MODEL_DIR / "model_registry.json"
@@ -281,7 +281,7 @@ def main() -> None:
     }
     registry["active_version"] = VERSION
     registry["updated_at"] = trained_at
-    registry_path.write_text(json.dumps(registry, indent=2), encoding="utf-8")
+    registry_path.write_text(json.dumps(registry, indent=2), encoding="utf-8", newline="\n")
     shutil.copyfile(model_path, MODEL_DIR / "trained_models.pkl")
     shutil.copyfile(metadata_path, MODEL_DIR / "metadata.json")
     print(f"Registered King County model {VERSION}; holdout R2={evaluation['overall']['r2']:.3f}")

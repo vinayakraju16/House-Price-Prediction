@@ -200,9 +200,9 @@ def main() -> None:
         "best_cv_mae": best_mae,
         "best_cv_rmse": best_rmse,
     }
-    JSON_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    JSON_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
     pd.DataFrame([{key: value for key, value in result.items() if key != "cv_folds"} for result in results]).to_csv(CSV_PATH, index=False)
-    REPORT_PATH.write_text(render_report(results, best_mae, best_rmse), encoding="utf-8")
+    REPORT_PATH.write_text(render_report(results, best_mae, best_rmse), encoding="utf-8", newline="\n")
     print(f"Wrote {REPORT_PATH.relative_to(ROOT)}")
 
 

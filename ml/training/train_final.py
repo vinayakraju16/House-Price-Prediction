@@ -194,7 +194,7 @@ def main(track_mlflow=False, tracking_uri=None, experiment_name="house-price-sea
             experiment_name=experiment_name,
         )
         metadata["experiment_tracking"]["enabled"] = True
-    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8", newline="\n")
     metadata_sha256 = _sha256(metadata_path)
 
     registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8")) if REGISTRY_PATH.exists() else {"models": {}}
@@ -212,7 +212,7 @@ def main(track_mlflow=False, tracking_uri=None, experiment_name="house-price-sea
     }
     registry["active_version"] = MODEL_VERSION
     registry["updated_at"] = datetime.now(timezone.utc).isoformat()
-    REGISTRY_PATH.write_text(json.dumps(registry, indent=2), encoding="utf-8")
+    REGISTRY_PATH.write_text(json.dumps(registry, indent=2), encoding="utf-8", newline="\n")
     shutil.copyfile(model_path, COMPATIBILITY_MODEL_PATH)
     shutil.copyfile(metadata_path, COMPATIBILITY_METADATA_PATH)
     print(f"Registered Seattle model {MODEL_VERSION} at {model_path.relative_to(ROOT)}")
