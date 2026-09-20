@@ -5,9 +5,10 @@ Audit performed: September 19, 2026
 ## Summary
 
 The live Cloudflare Workers deployment (`house-price-prediction.vinayakraju01.workers.dev`)
-was serving a blank page. The cause, fix, and verification are below, followed by a broader
-repository audit (backend, ML, CI, Docker) that verified the claims in the earlier
-`PROJECT_AUDIT.md` and found a handful of additional issues, most of which are fixed in this
+was serving a blank page, and GitHub Actions CI had been failing on every push since August 16.
+Both root causes, their fixes, and verification are below, followed by a broader repository audit
+(backend, ML, CI, Docker) that verified the claims in the earlier `PROJECT_AUDIT.md` and found a
+handful of additional issues, most of which are fixed in this
 change.
 
 ## Cloudflare deployment error: root cause and fix
@@ -61,6 +62,52 @@ unreachable from a visitor's browser: the property estimate form will show a con
 until a backend is hosted somewhere public, `VITE_API_URL` is set to that origin, and the
 frontend is rebuilt and redeployed. This is a deployment-topology decision, not something to
 default without input.
+
+## Critical: CI had been failing since Aug 22, and the same bug breaks Linux deployments
+
+While pushing the Cloudflare fix, GitHub Actions CI failed on both the `python` and `postgres`
+jobs. Checking recent run history showed **every CI run since the King County v3.0.0 model was
+registered on August 16 had failed** (`80507651`, `451978fb`, and this push all failed the same
+way) — this had gone unnoticed because nothing was watching CI status.
+
+**Root cause:** `backend/mlmodels/model_registry.json` records a `metadata_sha256` for each model
+version, checked both by `ml/tests/test_artifact.py` and, more importantly, at runtime by
+`backend/api/services.py`'s `_verify_registered_checksum()` before every `load_models()` /
+`model_metadata()` call. The recorded checksum was computed by `ml/training/train_king_county.py`
+(and `train_final.py`) via `Path.write_text(json.dumps(...), encoding="utf-8")` on a Windows
+training machine — `write_text` without an explicit `newline` argument translates every `\n` to
+the OS line separator, i.e. `\r\n` on Windows, before the checksum is computed. Git's `autocrlf`
+then silently normalizes those `\r\n` bytes back to `\n` when the file is committed, so the
+checksum baked into the registry reflects bytes that were never actually stored in the
+repository. On the original Windows machine this went unnoticed because checkout re-introduced
+`\r\n`, coincidentally matching the recorded checksum again — but **every Linux checkout (every
+GitHub Actions runner, and any Docker image built from a fresh `git clone`) gets the real,
+`\n`-only git blob**, which does not match.
+
+This is not just a test failure: the same checksum check runs in the live request path. A fresh
+Linux deployment of this backend would 500 on `/predict/`, `/model-info/`, and the readiness
+probe with `RuntimeError: Registered metadata_sha256 does not match metadata.json.` — confirmed
+directly from the CI logs (`backend/api/tests.py`'s real (non-mocked) prediction tests failed
+with exactly this error). The trained model weights themselves (`model.joblib`, binary) were
+never affected — git correctly detects `.joblib` as binary and never mangled it — only the
+JSON metadata sidecar's recorded checksum was wrong.
+
+**Fix:**
+- Added `.gitattributes` (`* text=auto eol=lf`, explicit `binary` for images/`.joblib`/`.pkl`/
+  `.zip`) so every text file has OS-independent line endings from now on, and reran
+  `git add --renormalize .` plus a forced re-checkout to confirm.
+- Corrected `metadata_sha256` in `model_registry.json` for both the `2.2.0` and `3.0.0` entries to
+  the actual checksum of the committed (LF) `metadata.json` files.
+- Added `newline="\n"` to every `write_text()` call in `ml/training/` that produces a committed
+  JSON/report artifact (`train_final.py`, `train_king_county.py`, `benchmark.py`,
+  `benchmark_king_county.py`, `tune.py`, `tune_king_county.py`), so retraining on any OS produces
+  a checksum-stable file going forward.
+
+**Verified:** a genuinely fresh `git clone` of the fix commit, on the same Windows machine
+(`autocrlf=true`), now produces the correct LF content and matching registry checksums — proving
+`.gitattributes`' `eol=lf` overrides `autocrlf` as intended. `ml/tests` (19/19) and
+`backend/api/tests.py` against both SQLite and a local Postgres 17 container (26/26 each) all
+pass. The GitHub Actions run for this fix should be the first green CI run since August 16.
 
 ## Repository audit findings
 
