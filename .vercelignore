@@ -1,0 +1,21 @@
+# This Vercel project only builds frontend/ (a static Vite app). Excluding the
+# Python/ML side of this monorepo stops Vercel's zero-config detection from
+# picking up pyproject.toml/requirements.txt at the repo root and trying to
+# provision a Python runtime that this project doesn't need.
+backend/
+ml/
+venv/
+data/
+archive/
+reports/
+scripts/
+backups/
+docs/
+.github/
+requirements.txt
+requirements-backend.txt
+requirements-dev.txt
+requirements-mlflow.txt
+pyproject.toml
+docker-compose.yml
+docker-compose.postgres.yml
