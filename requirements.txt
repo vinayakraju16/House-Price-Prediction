@@ -1,10 +1,5 @@
-Django==5.2.16
-django-cors-headers==4.9.0
-djangorestframework==3.17.1
-gunicorn==26.0.0
-joblib==1.5.3
+# Full local/dev environment: backend runtime plus ml/ (EDA plotting needs matplotlib).
+# The production backend Docker image installs requirements-backend.txt instead, which
+# excludes matplotlib since it is never imported by backend/ code.
+-r requirements-backend.txt
 matplotlib==3.10.5
-pandas==2.3.3
-psycopg[binary]==3.3.4
-scikit-learn==1.4.2
-whitenoise==6.12.0

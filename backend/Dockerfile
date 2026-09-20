@@ -7,8 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app/backend
 
-COPY requirements.txt /app/requirements.txt
-RUN python -m pip install -r /app/requirements.txt
+COPY requirements-backend.txt /app/requirements-backend.txt
+RUN python -m pip install -r /app/requirements-backend.txt
 
 COPY backend /app/backend
 COPY data/Seattle/train_cleaned.csv /app/data/Seattle/train_cleaned.csv

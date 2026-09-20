@@ -163,8 +163,10 @@ def build_input_frame(payload):
 
 def engineer_features_for_inference(df, tier_mapping=None, feature_names=None):
     """
-    Engineer features on raw input data for inference.
-    Mirrors the feature engineering done during training.
+    Legacy standalone feature-engineering helper, exercised only by the leakage-guard test
+    (see backend/api/tests.py). The live /predict/ path does not call this: the deployed
+    pipeline in model_runtime/features.py performs its own feature engineering internally,
+    so this copy can drift from it without affecting real predictions.
     """
     requested_features = list(feature_names or [])
     forbidden = {"price_per_sqft", "is_price_anomaly"}.intersection(requested_features)

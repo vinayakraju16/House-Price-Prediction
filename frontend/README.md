@@ -1,24 +1,41 @@
 # HavenValue frontend
 
-## Cloudflare Pages
+## Cloudflare Workers (static assets)
 
-Deploy this Vite application as a Cloudflare Pages project with these build settings:
+This app is deployed as a Cloudflare Workers static-assets site, configured by
+[`wrangler.toml`](wrangler.toml):
 
-```text
-Root directory: frontend
-Build command: npm run build
-Build output directory: dist
+```toml
+name = "house-price-prediction"
+compatibility_date = "2026-09-19"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
 ```
 
-The output directory is relative to the configured root directory. Do not publish the `frontend`
-source directory: its `index.html` references uncompiled JSX from `/src/index.jsx`. A correct
-deployment publishes `frontend/dist/index.html`, whose scripts and styles are compiled under
-`/assets/`.
+Deploy with:
+
+```powershell
+npm run build
+npx wrangler deploy
+```
+
+Do not deploy the `frontend` source directory itself: its `index.html` references uncompiled JSX
+from `/src/index.jsx`, which browsers cannot execute and which Workers will serve as plain text
+(`text/jsx`), producing a blank page. `wrangler deploy` must run after `npm run build`, uploading
+only `frontend/dist`, whose scripts and styles are compiled under `/assets/`.
+
+`not_found_handling = "single-page-application"` is required for React Router URLs such as
+`/house-price` and `/about` to resolve — unlike Cloudflare Pages, Workers does not infer SPA
+routing automatically; without this setting, a direct visit to those URLs returns a 404.
 
 Set `VITE_API_URL` to the public backend origin before building. The value is embedded in the
-frontend bundle by Vite. Cloudflare Pages supplies its default single-page application fallback
-for React Router URLs such as `/house-price` and `/about` because this build has no top-level
-`404.html`.
+frontend bundle by Vite. No public backend origin is configured yet (see the root
+`CLOUDFLARE_DEPLOYMENT_AUDIT.md`), so the deployed build currently falls back to
+`http://localhost:8000`, which is unreachable from the deployed site — the prediction form will
+show a connection error until `VITE_API_URL` is set to a real hosted backend and the site is
+rebuilt and redeployed.
 
 React 18 client built with Vite and tested with Vitest + Testing Library.
 

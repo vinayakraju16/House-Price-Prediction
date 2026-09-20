@@ -5,6 +5,9 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       DJANGO_DEBUG: "false"
+      # The fallbacks below are for local-only `docker compose up` demos and are NOT safe for any
+      # shared or public deployment. Export DJANGO_SECRET_KEY and MONITORING_API_KEY (e.g. from a
+      # copy of .env.example) before deploying this stack anywhere reachable beyond localhost.
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-compose-secret-change-before-deployment-7f1d89c5a321}
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       CORS_ALLOWED_ORIGINS: http://localhost:3000
