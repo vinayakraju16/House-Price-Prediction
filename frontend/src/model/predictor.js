@@ -238,6 +238,11 @@ export function predictRow(model, row) {
   return Math.expm1(rawPrediction(model.regressor, transformRow(model, row)));
 }
 
+/** Validate a payload and return only the dollar prediction (fast path for what-if sliders). */
+export function predictPayload(model, payload, now = new Date()) {
+  return predictRow(model, buildInputRow(model, payload, now));
+}
+
 /** Port of explain_prediction: deterministic permutation Shapley values. */
 export function explainPrediction(model, row) {
   const reference = model.explanation_reference;
