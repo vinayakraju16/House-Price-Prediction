@@ -9,6 +9,19 @@ recording numbers, and other direct identifiers are excluded at read time. Raw a
 data are ignored by Git. Filter counts and hashes are recorded in
 `reports/king_county_data_audit.json` and the registered model metadata.
 
+## Wake County, NC sale-price data
+
+Download from Wake County Tax Administration
+(<https://services.wake.gov/realdata_extracts/>) into `data/raw/wake-county/`:
+
+- `Qualified_Sales_Past_24Months.xlsx` (appraiser-reviewed arm's-length sales, updated daily)
+- `RealEstDataMMDDYYYY.zip` (full fixed-width real estate file; the newest dated file is used)
+
+Run `python -m ml.data.wake_county` from the repository root (needs `openpyxl`). Owner names,
+mailing addresses, and street addresses are skipped at read time. Output goes to
+`data/processed/wake-county/sales.csv`; filter counts go to `reports/wake_county_data_audit.json`.
+Wake County publishes no bedroom count, so this market's model has no `beds` feature.
+
 ## Harris County data workspace
 
 This folder is reserved for the Harris Central Appraisal District (HCAD) public-data import.

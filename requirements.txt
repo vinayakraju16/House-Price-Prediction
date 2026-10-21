@@ -3,3 +3,4 @@
 # excludes matplotlib since it is never imported by backend/ code.
 -r requirements-backend.txt
 matplotlib==3.10.5
+openpyxl==3.1.5
