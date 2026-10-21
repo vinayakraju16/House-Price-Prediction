@@ -143,17 +143,10 @@ non-root user with `--no-create-home`) — worth a follow-up but not blocking.
 
 ## Vercel build failure: unrelated project, same push
 
-While diagnosing the above, a build error surfaced from a separately-connected Vercel project:
-`uv lock` failing with `No `project` table found in: /vercel/path0/pyproject.toml`. This repo's
-root `pyproject.toml` only holds `[tool.ruff]` config for the Python/ML side — it was never meant
-to be an installable Python project. With no `vercel.json` in the repo, Vercel's zero-config
-detection was looking at the whole monorepo root, seeing that file plus `requirements.txt`, and
-trying to provision a Python runtime for them.
-
-**Fix:** added a root `vercel.json` pinning the build explicitly to `frontend/` (`npm run build
---prefix frontend`, output `frontend/dist`, framework detection disabled) and a `.vercelignore`
-excluding `backend/`, `ml/`, and the Python requirement files from the deployment entirely, so no
-detector can pick them up again.
+A separately connected Vercel project was failing because its zero-config detection treated the
+repository root as a Python project. It was patched at the time with a root `vercel.json` and
+`.vercelignore`. In October 2026 Vercel was dropped entirely: the site is deployed only on
+Cloudflare Workers, and both files were removed.
 
 ## Repository audit findings
 
