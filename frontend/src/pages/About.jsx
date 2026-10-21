@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaCheckCircle } from 'react-icons/fa';
-import { API_URL } from '../config';
+import { requestModelInfo } from '../model';
 import './All.css';
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -9,8 +9,7 @@ const About = () => {
   const [model, setModel] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/model-info/`).then((response) => response.ok ? response.json() : null)
-      .then(setModel).catch(() => setModel(null));
+    requestModelInfo().then(setModel).catch(() => setModel(null));
   }, []);
 
   return (

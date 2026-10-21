@@ -15,7 +15,12 @@ test('serves the landing page and supports direct client routes', async ({ page 
   await expect(page.getByRole('button', { name: /Calculate estimate/i })).toBeVisible();
 });
 
-test('submits a valuation through Nginx and renders the enriched model response', async ({ page }) => {
+test('calculates a valuation in the browser and renders the enriched model response', async ({ page }) => {
+  // The model runs client-side (src/model), so the page must not call a prediction API.
+  const apiRequests = [];
+  page.on('request', (request) => {
+    if (/\/(api\/)?predict\/?$/.test(new URL(request.url()).pathname)) apiRequests.push(request.url());
+  });
   await page.goto('/house-price');
 
   await page.getByLabel('Bedrooms').fill('3');
@@ -24,13 +29,9 @@ test('submits a valuation through Nginx and renders the enriched model response'
   await page.getByLabel('Lot size').fill('6000');
   await page.getByLabel('ZIP code').fill('98144');
 
-  const predictionResponse = page.waitForResponse(
-    (response) => response.url().endsWith('/api/predict/') && response.request().method() === 'POST',
-  );
   await page.getByRole('button', { name: /Calculate estimate/i }).click();
 
-  await expect((await predictionResponse).status()).toBe(200);
-  await expect(page.getByText('Estimated value', { exact: true })).toBeVisible();
+  await expect(page.getByText('Estimated value', { exact: true })).toBeVisible({ timeout: 15000 });
   await expect(page.locator('.result-card .price')).toHaveText(/^\$[\d,]+$/);
   await expect(page.getByText('90% empirical range', { exact: true })).toBeVisible();
 
@@ -45,4 +46,5 @@ test('submits a valuation through Nginx and renders the enriched model response'
     has: page.getByRole('heading', { name: 'Similar historical sales' }),
   });
   await expect(comparableSection.locator('.comparable-item')).toHaveCount(5);
+  expect(apiRequests).toEqual([]);
 });
