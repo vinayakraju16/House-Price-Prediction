@@ -59,6 +59,24 @@ def build_engineered_preprocessor() -> Pipeline:
     ])
 
 
+def build_property_market_preprocessor(numeric, categorical, market=(), exclude=()) -> Pipeline:
+    """Preprocessor for per-market models: property columns plus ZIP-month market columns.
+
+    Columns in ``exclude`` are read to derive features but are not model inputs.
+    """
+    from model_runtime.market import PropertyMarketFeatureEngineer
+
+    engineer = PropertyMarketFeatureEngineer(tuple(numeric), tuple(categorical), tuple(market),
+                                             tuple(exclude))
+    return Pipeline([
+        ("features", engineer),
+        ("columns", ColumnTransformer([
+            ("numeric", _numeric_pipeline(), engineer.numeric_output_columns()),
+            ("categorical", _categorical_pipeline(), list(categorical)),
+        ])),
+    ])
+
+
 def build_king_county_preprocessor() -> Pipeline:
     """Build the shared rich-feature transformer used by training and inference."""
     return Pipeline([

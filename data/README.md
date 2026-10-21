@@ -22,6 +22,22 @@ mailing addresses, and street addresses are skipped at read time. Output goes to
 `data/processed/wake-county/sales.csv`; filter counts go to `reports/wake_county_data_audit.json`.
 Wake County publishes no bedroom count, so this market's model has no `beds` feature.
 
+## ZIP-level market data (all markets)
+
+Place these free national files in `data/raw/market/` (used by `ml/data/market_features.py`):
+
+| File | Source | What it adds |
+|---|---|---|
+| `Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv` | [Zillow Research](https://www.zillow.com/research/data/) — ZHVI, ZIP, mid-tier, smoothed & seasonally adjusted | Typical home value per ZIP and its 12-month change |
+| `RDC_Inventory_Core_Metrics_Zip_History.csv` | [Realtor.com Research](https://www.realtor.com/research/data/) — inventory core metrics, ZIP history | Days on market, price-cut share, pending ratio, active listings year over year |
+| `PMMS_history.csv` | [Freddie Mac PMMS](https://www.freddiemac.com/pmms) — `pmms/docs/PMMS_history.csv` | 30-year fixed mortgage rate (monthly mean) and its 12-month change |
+| `acs5_2024_zcta.csv` | Census ACS 2020–2024 5-year table-based summary files (B19013, B25077, B25064, B25003, B01003), ZCTA rows | Median household income and owner-occupied share per ZIP |
+
+A sale in month *m* only uses market data for month *m − 1*, matching when the figures are
+published. Refresh the three monthly files each month; the ACS file once a year (December).
+`acs5_2024_zcta.csv` is built from `www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/`
+by keeping `GEO_ID` rows that start with `860Z200US` (no API key needed).
+
 ## Harris County data workspace
 
 This folder is reserved for the Harris Central Appraisal District (HCAD) public-data import.
