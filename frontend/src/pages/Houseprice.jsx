@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FaArrowRight, FaCheck, FaHome, FaMagic, FaRedo } from 'react-icons/fa';
 import { requestEstimate } from '../model';
+import WhatIf from './WhatIf';
 import './All.css';
 
 const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -45,22 +46,23 @@ function Houseprice() {
   const [modelFactors, setModelFactors] = useState([]);
   const [comparables, setComparables] = useState([]);
   const [disclaimer, setDisclaimer] = useState('');
+  const [estimatedInputs, setEstimatedInputs] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState(loadRecentEstimates);
   const completed = useMemo(() => Object.values(formData).filter(Boolean).length, [formData]);
 
   const handleChange = ({ target: { name, value } }) => setFormData((current) => ({ ...current, [name]: value }));
-  const useSample = () => { setFormData(sampleHome); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setError(''); };
-  const reset = () => { setFormData(emptyForm); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setError(''); };
+  const useSample = () => { setFormData(sampleHome); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null); setError(''); };
+  const reset = () => { setFormData(emptyForm); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null); setError(''); };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setLoading(true); setError(''); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer('');
+    setLoading(true); setError(''); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null);
     try {
       // The model runs in the browser (src/model); no server request is made.
       const result = await requestEstimate(formData);
-      setPrediction(result.prediction); setEstimateRange(result.range ?? null); setConfidence(result.confidence ?? null); setModelFactors(result.top_factors ?? result.model_factors ?? []); setComparables(result.comparables ?? []); setDisclaimer(result.disclaimer ?? '');
+      setPrediction(result.prediction); setEstimateRange(result.range ?? null); setConfidence(result.confidence ?? null); setModelFactors(result.top_factors ?? result.model_factors ?? []); setComparables(result.comparables ?? []); setDisclaimer(result.disclaimer ?? ''); setEstimatedInputs({ ...formData });
       const nextRecent = [{ value: result.prediction, profile: `${formData.beds} bd / ${formData.baths} ba`, date: new Date().toLocaleDateString() }, ...recent].slice(0, 3);
       setRecent(nextRecent); localStorage.setItem('havenvalue-recent', JSON.stringify(nextRecent));
     } catch (estimateError) { setError(estimateError.message || 'Unable to calculate an estimate right now.'); } finally { setLoading(false); }
@@ -81,6 +83,7 @@ function Houseprice() {
         </section>
         <aside className="result-column">
           <section className={`result-card ${prediction !== null ? 'has-result' : ''}`} aria-live="polite">{prediction === null ? <><span className="result-icon"><FaHome /></span><p className="eyebrow">Your result</p><h2>Your estimate will appear here.</h2><p>Enter your property details and we’ll calculate a data-informed value.</p></> : <><span className="result-icon"><FaCheck /></span><p className="eyebrow">Estimated value</p><strong className="price">{formatter.format(prediction)}</strong>{estimateRange && <div className="estimate-range"><span>{estimateRange.nominal_coverage ? `${Math.round(estimateRange.nominal_coverage * 100)}% empirical range` : 'Likely range'}</span><strong>{formatter.format(estimateRange.low)} – {formatter.format(estimateRange.high)}</strong></div>}{confidence && <div className="confidence"><span>Input confidence</span><strong>{confidence.level}</strong></div>}<p>{confidence?.message}</p><small className="estimate-disclaimer">{disclaimer}</small></>}{error && <p className="error-message" role="alert">{error}</p>}</section>
+          {prediction !== null && estimatedInputs && <WhatIf inputs={estimatedInputs} basePrediction={prediction} />}
           {modelFactors.length > 0 && <section className="recent-card"><h2>What shaped this estimate</h2><p className="factor-note">Per-property contributions compared with a typical Seattle property. Positive values raise the estimate; negative values lower it.</p>{modelFactors.slice(0, 8).map((factor) => <div className="recent-item" key={factor.feature}><span>{factor.label ?? factor.feature.replaceAll('_', ' ')}</span><strong className={(factor.contribution ?? 0) >= 0 ? 'positive-factor' : 'negative-factor'}>{factor.contribution !== undefined ? `${factor.contribution >= 0 ? '+' : '−'}${formatter.format(Math.abs(factor.contribution))}` : formatter.format(factor.abs_importance ?? Math.abs(factor.coefficient ?? 0))}</strong></div>)}</section>}
           {comparables.length > 0 && <section className="recent-card"><h2>Similar historical sales</h2><p className="factor-note">Nearest privacy-safe King County Assessor records—not verified active listings or appraisals.</p>{comparables.map((property, index) => <div className="comparable-item" key={`${property.zip_code}-${property.price}-${index}`}><div><strong>{formatter.format(property.price)}</strong><span>{property.beds} bd · {property.baths} ba · {Number(property.size).toLocaleString()} sq ft</span></div><div><span>ZIP {property.zip_code}</span><small>{Math.round(property.similarity * 100)}% similar</small></div></div>)}</section>}
           {recent.length > 0 && <section className="recent-card"><h2>Recent estimates</h2>{recent.map((item, index) => <div className="recent-item" key={`${item.date}-${index}`}><span>{item.profile ?? 'Property profile'} · {item.date}</span><strong>{formatter.format(item.value)}</strong></div>)}</section>}

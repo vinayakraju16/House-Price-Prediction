@@ -1,5 +1,9 @@
 # Cloudflare Deployment & Repository Audit
 
+> **Update, October 2026:** the backend follow-up below is resolved differently. The website
+> now runs the model in the browser and needs no public backend; see
+> [`../frontend/README.md`](../frontend/README.md#the-model-runs-in-the-browser).
+
 Audit performed: September 19, 2026
 
 ## Summary
@@ -24,7 +28,7 @@ and React never mounted. There was no `wrangler.toml` committed anywhere in the 
 each deploy depended on whichever directory was passed manually to `wrangler deploy`.
 
 **Fix:**
-- Added [`frontend/wrangler.toml`](frontend/wrangler.toml), pinning the deploy to the build
+- Added [`frontend/wrangler.toml`](../frontend/wrangler.toml), pinning the deploy to the build
   output:
   ```toml
   name = "house-price-prediction"

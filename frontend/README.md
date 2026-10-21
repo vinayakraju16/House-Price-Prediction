@@ -52,8 +52,8 @@ scikit-learn pipeline, and `src/model/predictor.test.js` fails if the JavaScript
 disagrees with them. If the version changes, update the two import paths in
 `src/model/index.js`.
 
-The Django API is still used by Docker Compose and the Harris County page, which reads
-`VITE_API_URL` (see `src/config.js`).
+The frontend makes no API calls. The Django API remains available for other clients and for
+the Docker Compose stack.
 
 React 18 client built with Vite and tested with Vitest + Testing Library.
 
@@ -64,15 +64,8 @@ npm ci
 npm start
 ```
 
-The development server listens on `http://localhost:3000`. Estimates work without starting
-Django. Pages that still call the API use `VITE_API_URL`; override it before startup when needed:
-
-```powershell
-$env:VITE_API_URL = "https://api.example.com"
-npm start
-```
-
-Vite injects this value at build time; changing it after `npm run build` does not rewrite an existing bundle.
+The development server listens on `http://localhost:3000`. No backend is needed: every page,
+including estimates, runs entirely in the browser.
 
 ## Verification
 
@@ -86,7 +79,8 @@ npm run build
 - `npm run test:watch` starts interactive watch mode.
 - `npm run build` writes the production assets to `dist/`.
 
-Docker Compose builds with `VITE_API_URL=/api`, and Nginx proxies that same-origin path to Django.
+In Docker Compose, Nginx still proxies `/api/` to Django for API clients; the React app itself
+does not use it.
 
 ## Browser end-to-end tests
 

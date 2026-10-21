@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -282,8 +281,6 @@ def main() -> None:
     registry["active_version"] = VERSION
     registry["updated_at"] = trained_at
     registry_path.write_text(json.dumps(registry, indent=2), encoding="utf-8", newline="\n")
-    shutil.copyfile(model_path, MODEL_DIR / "trained_models.pkl")
-    shutil.copyfile(metadata_path, MODEL_DIR / "metadata.json")
     print(f"Registered King County model {VERSION}; holdout R2={evaluation['overall']['r2']:.3f}")
 
 

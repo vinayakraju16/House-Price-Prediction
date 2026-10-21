@@ -27,8 +27,6 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-/api}
     depends_on:
       backend:
         condition: service_healthy
