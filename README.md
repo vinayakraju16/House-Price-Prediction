@@ -147,7 +147,10 @@ The estimate page picks a model from the ZIP code (`frontend/src/model/markets.j
 | Wake County, NC | 38 ZIPs in the county's qualified sales | wake-county-1.0.0, priced relative to the ZIP's Zillow home value index | `marketPredictor.js` |
 
 Wake County has no bedroom count, so its form has no bedrooms field; its estimate also shows
-the ZIP's latest market conditions. Market data sources and findings:
+the ZIP's latest market conditions. The ZIP field suggests every trained ZIP with its place name, offers one-click popular ZIPs
+(most training sales) for each market, shows how many training sales back the entered ZIP, and flags ZIPs
+with fewer than 30 sales as less reliable. The directory is built from the training data by
+`python -m ml.training.export_market_model --routes-only`. Market data sources and findings:
 [`reports/MARKET_FEATURES_2026.md`](reports/MARKET_FEATURES_2026.md),
 [`reports/WAKE_COUNTY_MODEL.md`](reports/WAKE_COUNTY_MODEL.md).
 

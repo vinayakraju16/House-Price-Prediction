@@ -25,6 +25,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from ml.data.market_features import MARKET_DIR, ZHVI_FILE
 from ml.training.export_browser_model import _finite, _sha256, _tree_payload, _write_json
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -296,19 +297,94 @@ def build_fixtures(model, browser: dict, comparables: dict, count: int = 40,
     return {"sale_year": year, "sale_month": month, "cases": cases}
 
 
-def write_routes(markets: dict[str, dict]) -> None:
-    routes = [KING_COUNTY_ROUTE]
-    for market_id, browser in markets.items():
+# ZIP directory shown as suggestions in the estimate form. ZIPs with fewer training sales
+# than this are not suggested, and the form flags them as limited data.
+MIN_ZIP_SALES = 30
+PROCESSED_DIR = ROOT / "data" / "processed"
+ZIP_PLACE_NAMES = {
+    # Seattle neighbourhoods (the Zillow file only says "Seattle").
+    "98102": "Capitol Hill / Eastlake", "98103": "Fremont / Wallingford / Greenwood",
+    "98105": "University District / Laurelhurst", "98106": "Delridge / Highland Park",
+    "98107": "Ballard", "98108": "Georgetown / Beacon Hill",
+    "98109": "Queen Anne / South Lake Union", "98112": "Madison Park / Montlake",
+    "98115": "Ravenna / Wedgwood", "98116": "West Seattle (Alki)",
+    "98117": "Ballard / Crown Hill", "98118": "Columbia City / Rainier Valley",
+    "98119": "Queen Anne / Interbay", "98121": "Belltown", "98122": "Central District / Madrona",
+    "98125": "Lake City / Northgate", "98126": "West Seattle (High Point)",
+    "98133": "Bitter Lake / Shoreline", "98134": "SoDo", "98136": "West Seattle (Fauntleroy)",
+    "98144": "Mount Baker / Beacon Hill", "98146": "White Center / Burien",
+    "98155": "Shoreline / Lake Forest Park", "98166": "Burien / Normandy Park",
+    "98168": "Tukwila / Burien", "98177": "Broadview / Shoreline",
+    "98178": "Skyway / Rainier Beach", "98188": "SeaTac / Tukwila",
+    "98198": "Des Moines / SeaTac", "98199": "Magnolia",
+    # Raleigh areas (the Zillow file only says "Raleigh").
+    "27601": "Downtown", "27603": "South", "27604": "East", "27605": "Hillsborough Street",
+    "27606": "Southwest", "27607": "West / NC State", "27608": "Five Points",
+    "27609": "North Hills", "27610": "Southeast", "27612": "Northwest / Crabtree",
+    "27613": "Northwest", "27614": "North / Wakefield", "27615": "North",
+    "27616": "Northeast", "27617": "Brier Creek",
+}
+CITY_FIXES = {"Seatac": "SeaTac", "Fuquay Varina": "Fuquay-Varina"}
+DIRECTORY_SOURCES = {
+    "king-county": PROCESSED_DIR / "king-county" / "sales.csv",
+    "wake-county": PROCESSED_DIR / "wake-county" / "sales.csv",
+}
+
+
+def zip_directory(market_id: str, zhvi_path: Path) -> list[dict]:
+    """Per-ZIP training coverage (sales, median price), place name and latest ZHVI."""
+    sales = pd.read_csv(DIRECTORY_SOURCES[market_id], usecols=["zip_code", "price"],
+                        dtype={"zip_code": str})
+    stats = sales.groupby("zip_code")["price"].agg(["size", "median"])
+    zillow = pd.read_csv(zhvi_path, nrows=None, dtype={"RegionName": str},
+                         usecols=lambda c: c in {"RegionName", "City"} or c[:4].isdigit())
+    zillow["zip_code"] = zillow["RegionName"].str.zfill(5)
+    zillow = zillow.set_index("zip_code")
+    months = [c for c in zillow.columns if c[:4].isdigit()]
+    city = market_id == "wake-county"
+    entries = []
+    for zip_code, row in stats.iterrows():
+        place = zillow["City"].get(zip_code)
+        place = None if pd.isna(place) else CITY_FIXES.get(str(place), str(place))
+        area = ZIP_PLACE_NAMES.get(zip_code)
+        if city and area and place:
+            place = f"{place} ({area})"
+        elif area:
+            place = area
+        latest = zillow.loc[zip_code, months].dropna().iloc[-1] if zip_code in zillow.index \
+            and zillow.loc[zip_code, months].notna().any() else None
+        entries.append({
+            "zip": zip_code, "place": place, "sales": int(row["size"]),
+            "median_price": float(row["median"]),
+            "typical_value": None if latest is None else round(float(latest), -2),
+            "well_covered": bool(row["size"] >= MIN_ZIP_SALES),
+        })
+    return entries
+
+
+def write_routes(markets: dict[str, dict], zhvi_path: Path) -> None:
+    routes = [{**KING_COUNTY_ROUTE, "zips": zip_directory("king-county", zhvi_path)}]
+    for market_id, zip_codes in markets.items():
         routes.append({"id": market_id, "name": MARKETS[market_id]["name"],
                        "short_name": MARKETS[market_id]["short_name"],
-                       "zip_codes": browser["zip_codes"]})
-    _write_json(OUTPUT_DIR / "markets.json", {"markets": routes})
+                       "zip_codes": zip_codes, "zips": zip_directory(market_id, zhvi_path)})
+    _write_json(OUTPUT_DIR / "markets.json", {"min_zip_sales": MIN_ZIP_SALES, "markets": routes})
 
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--fixtures", action="store_true")
+    parser.add_argument("--routes-only", action="store_true",
+                        help="only rebuild markets.json (ZIP routing and ZIP directory)")
+    parser.add_argument("--market-dir", type=Path, default=MARKET_DIR)
     args = parser.parse_args(argv)
+    zhvi_path = args.market_dir / ZHVI_FILE
+    if args.routes_only:
+        zip_codes = {market_id: json.loads((MODEL_DIR / info["version"] / "metadata.json")
+                                           .read_text(encoding="utf-8"))["zip_codes"]
+                     for market_id, info in MARKETS.items()}
+        write_routes(zip_codes, zhvi_path)
+        return
     exported = {}
     for market_id, info in MARKETS.items():
         version_dir = MODEL_DIR / info["version"]
@@ -325,8 +401,8 @@ def main(argv=None) -> None:
         if args.fixtures:
             _write_json(FIXTURE_DIR / f"parity-{info['version']}.json",
                         build_fixtures(bundle["best_model"], browser, comparables))
-        exported[market_id] = browser
-    write_routes(exported)
+        exported[market_id] = browser["zip_codes"]
+    write_routes(exported, zhvi_path)
 
 
 if __name__ == "__main__":

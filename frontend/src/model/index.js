@@ -50,6 +50,26 @@ export function marketForZip(zip) {
     || (market.zip_ranges ?? []).some(([low, high]) => number >= low && number <= high)) ?? null;
 }
 
+/** Every trained ZIP with its market, place name and training coverage. */
+export const ZIP_DIRECTORY = MARKETS.flatMap((market) => (market.zips ?? []).map((entry) => ({
+  ...entry, market: market.id, marketName: market.name, marketShortName: market.short_name,
+})));
+export const MIN_ZIP_SALES = markets.min_zip_sales ?? 30;
+
+/** Directory entry for a ZIP code, or null when the model has no sales there. */
+export function zipInfo(zip) {
+  const text = String(zip ?? '').trim();
+  return ZIP_DIRECTORY.find((entry) => entry.zip === text) ?? null;
+}
+
+/** The well-covered ZIPs of a market with the most training sales. */
+export function popularZips(marketId, count = 4) {
+  return ZIP_DIRECTORY
+    .filter((entry) => entry.market === marketId && entry.well_covered)
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, count);
+}
+
 export function coverageMessage() {
   return `We currently cover ${MARKETS.map((market) => market.name).join(' and ')}.`;
 }

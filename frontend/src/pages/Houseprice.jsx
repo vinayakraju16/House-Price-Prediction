@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FaArrowRight, FaCheck, FaHome, FaMagic, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
-import { coverageMessage, DEFAULT_MARKET, marketForZip, requestEstimate } from '../model';
+import { coverageMessage, DEFAULT_MARKET, marketForZip, MARKETS, popularZips, requestEstimate, ZIP_DIRECTORY, zipInfo } from '../model';
 import { ALL_FIELD_NAMES, MARKET_FORMS } from './marketForms';
 import WhatIf from './WhatIf';
 import './All.css';
@@ -46,6 +46,48 @@ function MarketContext({ context }) {
   );
 }
 
+const compactMoney = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+const shortPlace = (place) => (place ?? '').split(' / ')[0];
+
+/** ZIP input with suggestions of trained ZIPs, popular picks and a coverage line. */
+function ZipField({ field, value, onChange, onPick }) {
+  const text = String(value ?? '').trim();
+  const info = zipInfo(text);
+  const market = marketForZip(text);
+  let coverage = null;
+  if (info?.well_covered) {
+    coverage = <small className="zip-coverage" data-testid="zip-coverage">{info.place ? `${info.place}, ` : ''}{info.marketShortName} · {info.sales.toLocaleString()} training sales{info.typical_value ? ` · typical value ${compactMoney.format(info.typical_value)}` : ''}</small>;
+  } else if (market && /^\d{5}$/.test(text)) {
+    const sales = info?.sales ?? 0;
+    coverage = <small className="zip-coverage zip-coverage-warning" data-testid="zip-coverage">{sales ? `Only ${sales} training ${sales === 1 ? 'sale' : 'sales'} in this ZIP` : 'No training sales in this ZIP'}; the estimate leans on nearby areas and is less reliable.</small>;
+  }
+  return (
+    <div className="field field-wide">
+      <label className="field">
+        <span>{field.label}</span>
+        <input type="text" inputMode="numeric" autoComplete="postal-code" pattern="[0-9]{5}" maxLength={5} name={field.name} value={value} onChange={onChange} list="zip-suggestions" required />
+        <datalist id="zip-suggestions">
+          {ZIP_DIRECTORY.filter((entry) => entry.well_covered).map((entry) => <option key={entry.zip} value={entry.zip} label={`${entry.place ?? ''} — ${entry.marketShortName}`} />)}
+        </datalist>
+        {field.hint && <small>{field.hint}</small>}
+      </label>
+      {coverage}
+      <div className="zip-picks" role="group" aria-label="Popular areas">
+        {MARKETS.map((item) => (
+          <div className="zip-pick-row" key={item.id}>
+            <span>{item.short_name}</span>
+            {popularZips(item.id, 3).map((entry) => (
+              <button type="button" className={`zip-chip ${entry.zip === text ? 'is-selected' : ''}`} key={entry.zip} onClick={() => onPick(entry.zip)} aria-label={`Use ZIP ${entry.zip}, ${entry.place ?? item.short_name} (${item.short_name})`}>
+                {entry.zip} <em>{shortPlace(entry.place)}</em>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Houseprice() {
   const [formData, setFormData] = useState(emptyForm);
   const [result, setResult] = useState(null);
@@ -63,6 +105,7 @@ function Houseprice() {
 
   const clearResult = () => { setResult(null); setEstimatedInputs(null); setError(''); };
   const handleChange = ({ target: { name, value } }) => setFormData((current) => ({ ...current, [name]: value }));
+  const pickZip = (zip) => setFormData((current) => ({ ...current, zip_code: zip }));
   const useSample = () => { setFormData({ ...emptyForm, ...form.sample }); clearResult(); };
   const reset = () => { setFormData(emptyForm); clearResult(); };
 
@@ -96,7 +139,7 @@ function Houseprice() {
           {detectedMarket && <p className="market-note" data-testid="market-note"><FaMapMarkerAlt /> Using the {detectedMarket.name} model</p>}
           {uncovered && <p className="market-note market-note-warning" role="status">{coverageMessage()}</p>}
           <form className="estimate-form" onSubmit={handleSubmit}>
-            {groups.map((group) => <fieldset key={group}><legend>{group}</legend><div className="field-grid">{form.fields.filter((field) => field.group === group).map((field) => <label className="field" key={field.name}><span>{field.label}{field.required === false && <em> optional</em>}</span>{field.kind === 'select' ? <select name={field.name} value={formData[field.name]} onChange={handleChange} required={field.required !== false}><option value="">Select one</option>{field.options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select> : <input type="number" name={field.name} value={formData[field.name]} onChange={handleChange} min={field.min} max={field.max} step={field.step} required={field.required !== false} />}{field.hint && <small>{field.hint}</small>}</label>)}</div></fieldset>)}
+            {groups.map((group) => <fieldset key={group}><legend>{group}</legend><div className="field-grid">{form.fields.filter((field) => field.group === group).map((field) => (field.name === 'zip_code' ? <ZipField key={field.name} field={field} value={formData.zip_code} onChange={handleChange} onPick={pickZip} /> : <label className="field" key={field.name}><span>{field.label}{field.required === false && <em> optional</em>}</span>{field.kind === 'select' ? <select name={field.name} value={formData[field.name]} onChange={handleChange} required={field.required !== false}><option value="">Select one</option>{field.options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select> : <input type="number" name={field.name} value={formData[field.name]} onChange={handleChange} min={field.min} max={field.max} step={field.step} required={field.required !== false} />}{field.hint && <small>{field.hint}</small>}</label>))}</div></fieldset>)}
             <button className="button button-primary submit-button" type="submit" disabled={loading}>{loading ? 'Calculating estimate…' : <>Calculate estimate <FaArrowRight /></>}</button>
           </form>
         </section>

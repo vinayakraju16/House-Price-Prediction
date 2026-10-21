@@ -114,3 +114,26 @@ test('Wake what-if sliders re-price with the Wake model, including the grade ste
   expect(screen.getByTestId('whatif-estimate')).toHaveTextContent(money.format(expected));
   expect(screen.queryByText('Same as your estimate')).not.toBeInTheDocument();
 }, 20000);
+
+test('popular ZIP picks fill the ZIP, switch the market and show training coverage', () => {
+  render(<Houseprice />);
+
+  fireEvent.click(screen.getByRole('button', { name: /Use ZIP 27587, Wake Forest/i }));
+  expect(screen.getByLabelText(/^ZIP code/i)).toHaveValue('27587');
+  expect(screen.getByTestId('market-note')).toHaveTextContent('Using the Wake County, NC model');
+  expect(screen.getByTestId('zip-coverage')).toHaveTextContent(/Wake Forest, Wake County · [\d,]+ training sales · typical value \$/);
+  expect(screen.queryByLabelText(/Bedrooms/i)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /Use ZIP 98103/i }));
+  expect(screen.getByTestId('zip-coverage')).toHaveTextContent(/Fremont \/ Wallingford \/ Greenwood, Seattle/);
+  expect(screen.getByLabelText(/Bedrooms/i)).toBeInTheDocument();
+});
+
+test('flags covered-market ZIPs with little or no training data', () => {
+  render(<Houseprice />);
+
+  fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '98113' } });
+  expect(screen.getByTestId('zip-coverage')).toHaveTextContent(/^Only \d+ training sales in this ZIP; the estimate leans on nearby areas/);
+  fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '98151' } });
+  expect(screen.getByTestId('zip-coverage')).toHaveTextContent('No training sales in this ZIP');
+});

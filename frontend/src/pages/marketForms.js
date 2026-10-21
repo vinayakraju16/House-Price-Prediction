@@ -29,7 +29,7 @@ export const MARKET_FORMS = {
   'king-county': {
     placeLabel: 'Seattle',
     fields: [
-      zipField('Seattle ZIP 98101–98199 or a Wake County, NC ZIP'),
+      zipField('Seattle area or Wake County, NC — start typing to see covered ZIPs'),
       { name: 'beds', label: 'Bedrooms', hint: 'Number of bedrooms', min: 1, step: 1, group: 'Property basics' },
       { name: 'baths', label: 'Bathrooms', hint: 'Number of bathrooms', min: 0.5, step: 0.5, group: 'Property basics' },
       { name: 'size', label: 'Home size', hint: 'Square feet', min: 1, step: 1, group: 'Property basics' },
@@ -61,7 +61,7 @@ export const MARKET_FORMS = {
   'wake-county': {
     placeLabel: 'Wake County',
     fields: [
-      zipField('Wake County, NC ZIP, e.g. 27615'),
+      zipField('Seattle area or Wake County, NC — start typing to see covered ZIPs'),
       { name: 'baths', label: 'Bathrooms', hint: 'Number of bathrooms', min: 0.5, step: 0.5, group: 'Property basics' },
       { name: 'size', label: 'Home size', hint: 'Heated square feet', min: 1, step: 1, group: 'Property basics' },
       { name: 'lot_size', label: 'Lot size', hint: 'Square feet (1 acre = 43,560); 0 for condos', min: 0, step: 1, group: 'Property basics' },
