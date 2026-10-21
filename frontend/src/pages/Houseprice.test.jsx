@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import comparables from '../model/comparables-3.1.0.json';
 import model from '../model/king-county-3.1.0.json';
-import { estimateMarket } from '../model/marketPredictor';
+import { estimateMarket, predictMarketPayload } from '../model/marketPredictor';
 import { estimate, predictPayload } from '../model/predictor';
 import wakeComparables from '../model/wake-county-comparables-1.0.0.json';
 import wakeModel from '../model/wake-county-1.0.0.json';
@@ -96,3 +96,21 @@ test('explains which markets are covered for other ZIP codes', async () => {
   fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '10001' } });
   expect(screen.getByRole('status')).toHaveTextContent('We currently cover Seattle (King County, WA) and Wake County, NC.');
 });
+
+test('Wake what-if sliders re-price with the Wake model, including the grade steps', async () => {
+  render(<Houseprice />);
+
+  fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '27615' } });
+  fireEvent.click(screen.getByRole('button', { name: /Use sample/i }));
+  fireEvent.click(screen.getByRole('button', { name: /Calculate estimate/i }));
+
+  expect(await screen.findByRole('heading', { name: /What if/i }, { timeout: 15000 })).toBeInTheDocument();
+  expect(screen.getByText('Same as your estimate')).toBeInTheDocument();
+
+  // Grade steps are [2, 3, 3.1, 4, 5, 6]; position 3 is grade 4 (B, above average).
+  fireEvent.change(screen.getByRole('slider', { name: /Construction grade/i }), { target: { value: '3' } });
+  const sample = { zip_code: '27615', baths: '2.5', size: '2200', lot_size: '10890', property_type: 'Conventional', stories: '2', grade: 4, condition: '82', exterior_wall: 'Z', year_built: '2005', year_renovated: '', has_basement: 0, has_central_air: '1' };
+  const expected = predictMarketPayload(wakeModel, sample, new Date());
+  expect(screen.getByTestId('whatif-estimate')).toHaveTextContent(money.format(expected));
+  expect(screen.queryByText('Same as your estimate')).not.toBeInTheDocument();
+}, 20000);
