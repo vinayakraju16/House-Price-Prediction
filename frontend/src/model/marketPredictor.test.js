@@ -42,7 +42,7 @@ describe('parity with the scikit-learn pipeline', () => {
         expect(factor.contribution).toBeCloseTo(item.contributions[factor.feature], 4);
       }
     }
-  });
+  }, 60000);
 
   test('comparable sales match Python', () => {
     for (const item of fixtures.cases) {

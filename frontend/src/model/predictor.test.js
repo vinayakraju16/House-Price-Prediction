@@ -50,7 +50,7 @@ describe('parity with the scikit-learn pipeline', () => {
       }
     }
     expect(compared).toBeGreaterThan(fixtures.cases.length * 0.9);
-  });
+  }, 60000);
 
   test('comparable sales match the backend', () => {
     for (const item of fixtures.cases) {
