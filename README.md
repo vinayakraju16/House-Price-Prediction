@@ -1,420 +1,208 @@
-# House Price Prediction
+# HavenValue — Seattle home-price estimates, computed in your browser
 
-A React interface backed by a Django API that estimates Seattle home prices. The active experimental model is a tuned HistGradientBoosting pipeline trained from official King County Assessor sale, residential-building, and parcel extracts.
+[![CI](https://github.com/vinayakraju16/House-Price-Prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayakraju16/House-Price-Prediction/actions/workflows/ci.yml)
 
-**Current Model Performance:** five-fold parcel-grouped CV MAE $104,563, RMSE $214,331, and R² 0.832 for the untuned winning family. After bounded tuning, the untouched 2025–2026 temporal holdout records MAE $149,333, RMSE $289,585, and R² 0.832. See [`reports/MODEL_EVALUATION.md`](reports/MODEL_EVALUATION.md) for limitations and segment errors.
+**Live demo: [house-price-prediction.vinayakraju.dev](https://house-price-prediction.vinayakraju.dev)**
+
+HavenValue estimates the sale price of a Seattle-area home from its size, location, quality and
+age. The model is a gradient-boosted tree pipeline trained on **83,593 real King County Assessor
+sales**. It runs **entirely in the visitor's browser**: the deployed site is a static Cloudflare
+Workers app with no backend, and every estimate comes with:
+
+- a measured 90% price range;
+- a per-feature explanation of what drove the price;
+- the five most similar historical sales;
+- live "what-if" sliders that re-price the home as you drag.
+
+![HavenValue estimate with empirical range, factors, and comparables](docs/screenshots/valuation-result-desktop.png)
+
+## Highlights
+
+- **Real data, privacy-safe.** The model joins the county's sales, residential-building and parcel
+  extracts (2015 to July 2026). Owner names, addresses and recording numbers are dropped at read
+  time ([`ml/data/king_county.py`](ml/data/king_county.py)).
+- **Target leakage caught and fixed.** An earlier model reported R² 0.957, but two of its features
+  were computed from the sale price itself. Measured the way the API actually runs it, it scored
+  R² 0.499. It was retired and rebuilt
+  ([`reports/PRODUCTION_MODEL_AUDIT.md`](reports/PRODUCTION_MODEL_AUDIT.md)).
+- **Honest evaluation.** Models are chosen by 5-fold cross-validation grouped by parcel, so the same
+  house never appears in both train and test. They are then scored on an untouched **2025–2026
+  temporal holdout: R² 0.832, MAE $149k**. Errors on luxury homes are reported, not hidden
+  ([`reports/MODEL_EVALUATION.md`](reports/MODEL_EVALUATION.md)).
+- **Serverless inference with verified parity.** The fitted scikit-learn pipeline is exported to
+  JSON and re-implemented in JavaScript. It matches scikit-learn to within 2×10⁻¹⁶ relative error
+  on 21,786 homes, and a CI test fails if they ever diverge. Hosting cost: $0.
+- **Explainable by default.** Each estimate includes 128-path permutation-Shapley contributions
+  that add up exactly to the prediction, plus nearest comparable sales.
+- **Production engineering.** The repo includes:
+  - a checksummed model registry with rollback and versioned metadata;
+  - a reproducible training CLI and optional MLflow tracking;
+  - a Django API with request telemetry and drift monitoring;
+  - Docker Compose, with an optional PostgreSQL setup;
+  - GitHub Actions CI running Ruff, ML unit tests, Django tests on SQLite and PostgreSQL, ESLint,
+    Vitest, and Playwright browser tests.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[King County assessor extracts] --> B[Privacy-safe validation and joins]
-    B --> C[Feature engineering pipeline]
-    C --> D[CV benchmark and tuning]
-    D --> E[Versioned model and metadata]
-    E --> F[Django inference service]
-    F --> G[Prediction, interval, explanation]
-    F --> H[Privacy-safe historical sales]
-    G --> I[React valuation dashboard]
-    H --> I
-    F --> J[JSON logs and monitoring database]
-    J --> K[Protected monitoring endpoint]
+    A[King County Assessor extracts] --> B[Privacy-safe joins and validation]
+    B --> C[Grouped-CV benchmark and tuning]
+    C --> D[Checksummed model registry]
+    D --> E[export_browser_model.py]
+    E --> F[Model JSON in the React app]
+    F --> G[Browser: prediction, range, Shapley factors, comparables, what-if]
+    D --> H[Django API: same model for other clients]
+    H --> I[Telemetry and drift monitoring]
 ```
 
-Training is an explicit offline command. Django loads the registered artifact once per worker;
-it never trains a model during application startup or an API request.
+Training is an explicit offline step. The website never calls a server: Vite ships the model as
+two lazily loaded JSON files (~2 MB, much smaller gzipped) that the browser downloads only when
+someone asks for an estimate. The Django API serves the same registered artifact for other
+clients and for the Docker Compose stack.
 
-## Project Status
+## Results
 
-- ✓ Phase 0 Complete: Data cleaned, baseline validated
-- Phase 1 model rejected: target leakage found during production audit
-- P0 model rebuild complete: CV-first benchmark, bounded tuning, and error analysis implemented
-- Official-data upgrade complete: 83,593 validated sales and 18 model inputs
-- P1 valuation response complete: calibrated range, additive permutation-Shapley contributions, and historical comparables
-- P2 lifecycle complete: checksummed model registry, optional MLflow tracking, JSON logs, request telemetry, and drift summaries
-- P3 delivery complete: hardened settings, health probes, Docker Compose, Ruff/ESLint, and GitHub Actions CI
-- Frontend modernization complete: Vite/Vitest toolchain, React Router security update, and zero npm audit findings
-- Browser E2E complete: Playwright verifies navigation and real containerized valuation responses
-- PostgreSQL readiness complete: validated configuration, CI coverage, persistent Compose storage, and tested backup/restore tooling
+Model selection uses 5-fold `GroupKFold` by parcel. Parcels that appear in the 2025–2026 holdout
+are excluded from development data.
 
-See [reports/MODEL_EVALUATION.md](reports/MODEL_EVALUATION.md) for current measured results,
-[PROJECT_AUDIT.md](PROJECT_AUDIT.md) for the architecture overview, and
-[reports/LEGACY_ARTIFACT_AUDIT.md](reports/LEGACY_ARTIFACT_AUDIT.md) for the distinction
-between active, rollback, compatibility, and historical artifacts. The old Phase 1 summary
-is retained as a leakage case study, not as evidence of current performance.
+| Model | CV MAE | CV R² | Holdout MAE | Holdout R² |
+|---|---:|---:|---:|---:|
+| Dummy median | $313,828 | −0.049 | $475,038 | −0.340 |
+| Ridge (all features, log target) | $121,200 | 0.778 | $247,544 | 0.526 |
+| Gradient boosting (5 basic fields) | $184,794 | 0.653 | $309,168 | 0.534 |
+| Random forest (all features) | $125,060 | 0.774 | $179,562 | 0.763 |
+| Gradient boosting (all features, log target) | $104,563 | 0.832 | $152,425 | 0.828 |
+| **Same, after a 12-trial tuning search — deployed** | — | — | **$149,333** | **0.832** |
 
-## Project layout
+The tuning search improved CV RMSE from $214,331 to $210,053.
 
-- `frontend/` — React user interface.
-- `backend/` — Django API and deployed model in `backend/mlmodels/`.
-- `ml/` — Reproducible data, feature, training, and evaluation modules
-  - `data/validation.py` — Schema and domain validation
-  - `features/build_features.py` — Leakage-safe sklearn preprocessing
-  - `data/king_county.py` — Privacy-safe official-extract preparation
-  - `training/benchmark_king_county.py` — Grouped-CV and temporal-holdout comparison
-  - `training/tune_king_county.py` — Bounded randomized search
-  - `training/train_king_county.py` — Evaluation, final fit, metadata, and registration
-  - `evaluation/eda.py` and `error_analysis.py` — EDA and segment diagnostics
-- `data/raw/king-county/` — Locally downloaded official archives (ignored by Git)
-- `data/processed/king-county/sales.csv` — Reproducible privacy-safe cohort (ignored by Git)
-- `data/Seattle/` — Retained legacy five-field data, no longer the active source
-- `reports/` — Analysis and evaluation
-  - `MODEL_EVALUATION.md` — Canonical current model metrics and segment errors
-  - `PRODUCTION_MODEL_AUDIT.md` — Target-leakage finding and corrective action
-  - `LEGACY_ARTIFACT_AUDIT.md` — Artifact inventory and completed consolidation record
-  - `data_audit.json` — Data cleaning statistics
-- `archive/` — Reference-free historical experiments, reports, notebooks, and artifacts
+The 90% price range comes from holdout residual quantiles, and its measured coverage on the
+holdout is 90.0%. Homes above $2M remain the hardest segment (holdout MAE $530,899). See
+[`reports/MODEL_EVALUATION.md`](reports/MODEL_EVALUATION.md) for error by price band.
 
-**Deployed Model:** registry version `3.0.0` (rich-feature tuned HistGradientBoosting pipeline)
-**Model Metadata:** registry-selected metadata under `backend/mlmodels/versions/`; the
-top-level `metadata.json` is only a compatibility mirror.
+## How the in-browser model works
 
-## Model comparison
+[`ml/training/export_browser_model.py`](ml/training/export_browser_model.py) reads the registered
+pipeline and writes out its fitted parameters:
+- median imputation values;
+- standard-scaling means and scales;
+- one-hot categories;
+- every node of all 400 trees.
 
-Model selection uses cross-validation rather than the repeatedly examined legacy test file.
+It also writes the bundled comparable sales and the fixed Shapley permutations.
+[`frontend/src/model/predictor.js`](frontend/src/model/predictor.js) repeats each pipeline step
+with the same floating-point operations. It also ports the API's validation rules and error
+messages, so the site behaves exactly like the former `/predict/` endpoint.
 
-| Model | Features / target | CV MAE | CV RMSE | CV R² |
-|---|---|---:|---:|---:|
-| Dummy median | five-field / raw | $313,828 | $537,709 | -0.049 |
-| Ridge | rich / log1p | $121,200 | $246,054 | 0.778 |
-| HistGradientBoosting | five-field / log1p | $184,794 | $308,911 | 0.653 |
-| HistGradientBoosting | rich / raw | $109,926 | $222,057 | 0.820 |
-| HistGradientBoosting | rich / log1p | $104,563 | $214,331 | 0.832 |
-| Random Forest | rich / log1p | $125,060 | $249,211 | 0.774 |
+Parity is checked three ways:
+1. scikit-learn's own `predict`;
+2. an independent Python evaluator that reads only the JSON;
+3. the JavaScript, against
+   [fixtures](frontend/src/model/__fixtures__/parity-3.0.0.json) scored by the backend's own
+   explanation and comparable-search functions.
 
-The table uses five-fold `GroupKFold` by parcel. The bounded 12-trial search improved CV RMSE to
-$210,053 and achieved R² 0.832 on a 2025–2026 temporal holdout whose parcels were excluded from
-development data. Luxury-market error remains larger and is reported rather than hidden.
+## Run it locally
 
-## Repository hygiene
-
-`.gitignore` prevents environments, installed packages, logs, local databases, and frontend build output from being added again. Existing tracked generated files must be removed from Git's index once you have reviewed the current working-tree deletions; they are intentionally not removed automatically by this refactor.
-
-Legacy models, Ames experiments, superseded scripts, and stale reports are isolated under
-`archive/` and classified in
-[`reports/LEGACY_ARTIFACT_AUDIT.md`](reports/LEGACY_ARTIFACT_AUDIT.md). That audit is
-hash-backed and the cleanup was reversible: files were moved rather than permanently
-deleted. Only registry-listed Seattle artifacts are deployable; archived pickle files must
-not be copied into production.
-
-## Fresh-clone quick start
-
-The repository includes the registered version 3.0.0 model and its preprocessing pipeline. You
-do **not** need the raw King County downloads and do **not** need to retrain the model to run the
-application after cloning it.
-
-### Prerequisites
-
-For the recommended Docker workflow, install Git and Docker Desktop (or Docker Engine with the
-Compose plugin). For local development without Docker, install Python 3.10 and Node.js 22.13 or
-newer. The model must be loaded with the pinned scikit-learn version from `requirements.txt`.
-
-### Recommended: Docker Compose
+The website needs only Node.js 22.13+:
 
 ```powershell
-git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-cd YOUR-REPOSITORY
+cd frontend
+npm ci
+npm run dev          # http://localhost:3000
+```
+
+For the full stack (Django API, Nginx, SQLite) with Docker:
+
+```powershell
 docker compose up --build --detach --wait --wait-timeout 180
-```
-
-Replace the example URL and directory with the real GitHub repository. Open:
-
-- Application: `http://localhost:3000`
-- Backend health: `http://localhost:8000/health/`
-- Backend readiness and active model: `http://localhost:8000/ready/`
-
-Verify the running services:
-
-```powershell
-docker compose ps
-Invoke-RestMethod http://localhost:8000/health/
-Invoke-RestMethod http://localhost:8000/ready/
-```
-
-The readiness response should contain `"status": "ready"` and
-`"model_version": "3.0.0"`. Stop the application without deleting its local database volume:
-
-```powershell
+# App: http://localhost:3000   API health: http://localhost:8000/health/   Readiness: http://localhost:8000/ready/
 docker compose down
 ```
 
-To remove the disposable local database volume as well:
+A validated PostgreSQL override is available with
+`docker compose -f docker-compose.yml -f docker-compose.postgres.yml up --build`. Backups are
+documented in [`reports/DEPLOYMENT.md`](reports/DEPLOYMENT.md).
 
-```powershell
-docker compose down --volumes
-```
-
-The Compose defaults are for a local demonstration. No `.env` file is required for this workflow.
-For shared or public deployments, copy `.env.example` to `.env`, replace every placeholder secret,
-and configure the production host, HTTPS, database, and monitoring values.
-
-### Local development without Docker
-
-From the repository root on Windows PowerShell:
+To run the backend without Docker (Python 3.10, using the pinned scikit-learn 1.4.2):
 
 ```powershell
 py -3.10 -m venv venv
-.\venv\Scripts\python.exe -m pip install --upgrade pip
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 .\venv\Scripts\python.exe backend\manage.py migrate
 .\venv\Scripts\python.exe backend\manage.py runserver
 ```
 
-On macOS or Linux, replace `py -3.10` with `python3.10` and use
-`./venv/bin/python` instead of `.\venv\Scripts\python.exe`.
+## Retraining
 
-In a second terminal:
-
-```powershell
-cd frontend
-npm ci
-npm run dev
-```
-
-Open `http://localhost:3000`. The frontend defaults to `http://localhost:8000` for local API
-requests. Set `VITE_API_URL` before `npm run dev` only when the backend uses a different origin.
-
-### Files required in the GitHub repository
-
-A fresh clone can serve predictions only if these files were committed:
-
-```text
-backend/mlmodels/model_registry.json
-backend/mlmodels/versions/3.0.0/model.joblib
-backend/mlmodels/versions/3.0.0/metadata.json
-backend/model_runtime/features.py
-data/Seattle/train.csv
-data/Seattle/train_cleaned.csv
-data/Seattle/test.csv
-data/Seattle/test_cleaned.csv
-requirements.txt
-```
-
-The small `data/Seattle` files support Docker compatibility and legacy regression tests. The
-active version 3.0.0 model itself uses the privacy-safe comparable records bundled in its artifact.
-Do not commit `data/raw/`, `data/processed/`, `.env`, local SQLite files, logs, virtual
-environments, `node_modules`, or downloaded government ZIP archives.
-
-### Fresh-clone troubleshooting
-
-- `ready` returns HTTP 503: confirm the registry, versioned model, and metadata files above were
-  pushed, then check `docker compose logs backend`.
-- Model-version warning: remove the environment and reinstall `requirements.txt`; do not load the
-  artifact with a different global scikit-learn installation.
-- Port 3000 or 8000 is occupied: stop the conflicting application or change the published ports
-  in `docker-compose.yml`.
-- Frontend cannot reach the API: use `VITE_API_URL=/api` with Compose or
-  `VITE_API_URL=http://localhost:8000` for separate local processes.
-- Docker build cannot find `data/Seattle/train_cleaned.csv`: that compatibility file was not
-  included in the Git commit.
-
-## API
-
-`POST /predict/` keeps the original five fields required for backward compatibility and accepts
-richer optional building fields. It returns an estimate, calibrated interval, local explanation,
-and privacy-safe historical sales. Version 3.0.0 returns this shape:
-
-```json
-{
-  "prediction": 1193999.76,
-  "range": {
-    "low": 879480.68,
-    "high": 1659331.97,
-    "method": "2025-2026 temporal-holdout residual quantiles",
-    "nominal_coverage": 0.9
-  },
-  "confidence": {
-    "level": "High",
-    "message": "All entered values are within typical ranges seen during training.",
-    "unusual_features": []
-  },
-  "model_version": "3.0.0",
-  "top_factors": [
-    {"feature": "size", "label": "Living area", "contribution": 274651.38}
-  ],
-  "comparables": [
-    {"price": 795000.0, "beds": 3, "baths": 2.5, "size": 2590, "zip_code": 98144}
-  ]
-}
-```
-
-Required fields: `beds`, `baths`, `size`, `lot_size`, `zip_code`
-Optional model fields: `stories`, `grade`, `condition`, `year_built`, `year_renovated`,
-`finished_basement_sqft`, `garage_sqft`, `fireplaces`, `has_view`, `heat_system`, and
-`property_type`. Omitted values use documented training defaults. `address` or `pincode` is
-optional for context lookup and never changes the model estimate.
-
-Invalid input returns HTTP 400 with a stable error code and field-level details:
-
-```json
-{
-  "error": "validation_error",
-  "message": "size: Must be greater than zero.",
-  "details": {"size": "Must be greater than zero."},
-  "request_id": "..."
-}
-```
-
-### Performance Expectations
-
-**Experimental Model Evaluation:**
-- **Tuned grouped-CV RMSE:** $210,053
-- **2025–2026 holdout R²:** 0.832
-- **2025–2026 holdout MAE:** $149,333
-- **2025–2026 holdout RMSE:** $289,585
-- **Prediction range:** asymmetric 90% temporal-holdout residual interval with 90.0% measured coverage
-- **Training data:** 83,593 validated sales across 68,000+ parcels, 2015–July 2026
-
-**Model Confidence:**
-- **High confidence:** All input features within typical training ranges
-- **Medium confidence:** Some features uncommon but valid
-- **Low confidence:** Multiple features outside training distribution (extrapolation)
-
-The interval is a global residual-based range, not a guarantee for an individual property.
-Local factor contributions use 128 deterministic permutation-Shapley paths against a documented
-reference property; they add back to the prediction. Similar homes are privacy-safe assessor
-sales, not live listings or verified appraisal comparables.
-
-Set `MODEL_VERSION` to a version in `backend/mlmodels/model_registry.json` to pin or roll back the deployed model. Registry SHA-256 values are checked before deserialization. Successful and failed inference attempts record request ID, endpoint, status, model version, latency, and error category. Only validated model fields supplied to the prediction endpoint are retained; addresses, owner information, and market-context inputs are never stored.
-
-## Monitoring
-
-`GET /monitoring/?days=7` returns aggregate request counts, error rate, mean/p95 latency,
-prediction distribution, model-version counts, recent event metadata, and a lightweight
-feature-range heuristic. It does not return stored property inputs. Set `MONITORING_API_KEY`
-and send it as `X-Monitoring-Key` outside local development. The drift field reports how often
-inputs fall outside training p05/p95 bounds; it is an operational signal, not a statistical
-drift test. See [reports/OPERATIONS.md](reports/OPERATIONS.md).
-
-## Configuration
-
-Copy `.env.example` and supply environment-specific values. Production mode refuses to start
-without a non-development `DJANGO_SECRET_KEY`. Configure allowed hosts/origins, TLS redirect,
-secure cookies, proxy handling, and HSTS only after HTTPS is working. Secrets are not committed.
-
-## Optional live market context
-
-The estimate form can also accept a ZIP or pincode and, when available, a full U.S. address. The backend uses the Census Geocoder to identify its county and caches the lookup. Set `CENSUS_API_KEY` to show the county's ACS median home value and `FRED_API_KEY` to show the latest 30-year mortgage rate. These external values provide context only; they do not alter the trained property-model estimate.
-
-MLS listings and sold comparables are deliberately not scraped. Connect a licensed MLS/RESO or commercial data provider before displaying them.
-
-## Model Training Pipeline
-
-To train or retrain the model:
+Place the county's `Real Property Sales.zip`, `Residential Building.zip` and `Parcel.zip` under
+`data/raw/king-county/` (Git ignores them), then run:
 
 ```powershell
-# Place the three official archives under data/raw/king-county/, then prepare them
-.\venv\Scripts\python.exe -m ml.data.king_county
-
-# Benchmark candidates
-.\venv\Scripts\python.exe -m ml.training.benchmark_king_county
-
-# Tune the strongest candidate with grouped CV
-.\venv\Scripts\python.exe -m ml.training.tune_king_county
-
-# Generate error analysis, fit all validated rows, and register the selected model
-.\venv\Scripts\python.exe -m ml.training.train_king_county
+.\venv\Scripts\python.exe -m ml.data.king_county                 # privacy-safe joined dataset
+.\venv\Scripts\python.exe -m ml.training.benchmark_king_county   # grouped-CV comparison
+.\venv\Scripts\python.exe -m ml.training.tune_king_county        # bounded randomized search
+.\venv\Scripts\python.exe -m ml.training.train_king_county       # evaluate, fit, register
+.\venv\Scripts\python.exe -m ml.training.export_browser_model --fixtures   # update the website
 ```
 
-MLflow is optional and is never imported by inference. The active King County training commands
-write reproducible JSON/CSV reports and versioned metadata without requiring a tracking server.
-To launch a local tracking server for additional experiments:
+The registry ([`backend/mlmodels/model_registry.json`](backend/mlmodels/model_registry.json))
+records SHA-256 hashes, and Django verifies them before loading a model. Set `MODEL_VERSION` to
+pin or roll back the API. MLflow tracking is optional (`requirements-mlflow.txt`) and never
+imported at inference time.
 
-```powershell
-.\venv\Scripts\pip.exe install -r requirements-mlflow.txt
-.\venv\Scripts\mlflow.exe server --backend-store-uri sqlite:///mlruns.db --port 5000
-```
+## Repository layout
 
-The active version 3.0.0 scripts do not require this server. MLflow remains opt-in so serving the
-API does not require experiment-tracking infrastructure. See the
-[official MLflow tracking quickstart](https://mlflow.org/docs/latest/ml/getting-started/quickstart/).
+| Path | Contents |
+|---|---|
+| `frontend/` | React 18 + Vite app, in-browser model (`src/model/`), Vitest and Playwright tests |
+| `ml/` | Data preparation, feature pipelines, benchmarking, tuning, training, export |
+| `backend/` | Django API, model registry (`mlmodels/`), monitoring, request telemetry |
+| `reports/` | Evaluation, benchmark, leakage audit, operations and deployment notes |
+| `docs/` | Screenshots and project/deployment audit write-ups |
+| `data/Seattle/` | Small legacy dataset behind the `seattle-ridge-v1` rollback model and the original five-field pipeline |
 
-The selected pipeline creates safe derived features inside sklearn, treats ZIP and assessor codes
-as categorical, trains on `log1p(price)`, and reverses predictions with `expm1`. Selection uses
-parcel-grouped CV; 2025–2026 is held out temporally for evaluation and interval calibration.
+## API (optional backend)
 
-See [MODEL_BENCHMARK.md](reports/MODEL_BENCHMARK.md) for candidate comparisons and
-[MODEL_EVALUATION.md](reports/MODEL_EVALUATION.md) for final metrics and error analysis.
+`POST /predict/` takes `beds`, `baths`, `size`, `lot_size` and `zip_code` (98101–98199). It also
+accepts optional building details: `stories`, `grade`, `condition`, `year_built`,
+`year_renovated`, `finished_basement_sqft`, `garage_sqft`, `fireplaces`, `has_view`,
+`heat_system` and `property_type`. Omitted fields use the training defaults.
+
+The response contains:
+- `prediction`;
+- the 90% `range`;
+- input `confidence`;
+- `top_factors` (Shapley contributions);
+- five `comparables`.
+
+Invalid input returns HTTP 400 with field-level `details`.
+
+`GET /monitoring/?days=7` reports request counts, error rate, latency percentiles, the prediction
+distribution, and an input-drift signal; send `X-Monitoring-Key` outside development
+([`reports/OPERATIONS.md`](reports/OPERATIONS.md)). A separate, experimental Harris County (Texas)
+appraisal-value model is served at `/harris-schema/` and `/predict-harris/`
+([`ml/HARRIS_COUNTY.md`](ml/HARRIS_COUNTY.md)).
 
 ## Testing
-
-Use the project venv: the model was serialized with the pinned scikit-learn 1.4.2 runtime and
-must not be loaded with an unrelated global Python installation.
 
 ```powershell
 .\venv\Scripts\python.exe -m unittest discover -s ml\tests -v
 .\venv\Scripts\ruff.exe check backend\api backend\djanoproject backend\model_runtime ml\data ml\features ml\training ml\evaluation ml\tests
-cd backend
-..\venv\Scripts\python.exe manage.py test api
-cd ..\frontend
-npm run lint
-npm test
-npm run build
+cd backend; ..\venv\Scripts\python.exe manage.py test api; cd ..
+cd frontend; npm run lint; npm test; npm run build
 ```
 
-Run the browser suite against the complete containerized application:
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these checks plus the PostgreSQL
+Django suite and Playwright end-to-end tests against the Docker Compose stack.
 
-```powershell
-cd ..
-docker compose up --build --detach --wait --wait-timeout 180
-cd frontend
-npx playwright install chromium
-npm run test:e2e
-cd ..
-docker compose down
-```
+## Limitations and next steps
 
-## Docker
-
-The Compose stack builds a non-root Python 3.10/Gunicorn backend and a multi-stage React/Nginx
-frontend. Nginx proxies `/api/` to Django, while SQLite data is kept in a named volume.
-
-```powershell
-docker compose up --build
-```
-
-Open `http://localhost:3000`. Direct API health endpoints are available at
-`http://localhost:8000/health/` and `http://localhost:8000/ready/`.
-
-```powershell
-docker compose ps
-docker compose down
-```
-
-Compose defaults are intended for local demonstration. Before a shared deployment, set strong
-secrets, enable HTTPS security variables, protect monitoring, configure backups, and replace
-SQLite before adding multiple backend replicas. A validated PostgreSQL override is available:
-
-```powershell
-$env:POSTGRES_PASSWORD = "replace-with-a-long-random-password"
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up --build
-```
-
-Backup and guarded restore commands are documented in [DEPLOYMENT.md](reports/DEPLOYMENT.md).
-
-## Continuous integration
-
-`.github/workflows/ci.yml` runs on pushes to `main` and pull requests. It performs Ruff checks,
-ML tests, SQLite and PostgreSQL Django tests, migration validation, Django deployment checks,
-ESLint, React tests, the production frontend build, both application image builds, and Playwright
-tests through the live Nginx-to-Django prediction path. It does not deploy or require cloud credentials.
-
-## Screenshots
-
-Reviewed desktop and mobile captures, their representative input, and reproduction commands are
-documented in [docs/screenshots](docs/screenshots/README.md).
-
-### Valuation landing page
-
-![HavenValue landing page](docs/screenshots/landing-desktop.png)
-
-### Enriched valuation result
-
-![HavenValue estimate with empirical range, factors, and comparables](docs/screenshots/valuation-result-desktop.png)
-
-## Future improvements
-
-- Add richer property-condition and geospatial data to improve sparse luxury-market predictions.
-- Replace SQLite with a managed relational database before horizontal scaling.
-- Add realized sale prices so monitoring can measure live prediction error, not only input drift.
-- Connect a licensed MLS/RESO provider for verified live comparable sales.
+- **One range for every home.** The price range has the same width for every house. Quantile
+  models would give a $3M home a wider range than a $500k condo.
+- **No precise location.** The model knows only the ZIP code, not latitude/longitude or
+  neighbourhood. Location features are the likeliest way to cut the large errors on luxury homes.
+- **Model comparison.** A LightGBM/CatBoost comparison and a market-index adjustment for older
+  sales are natural extensions.
+- **Not an appraisal.** Comparables are historical assessor sales, not live listings or verified
+  appraisal comparables.
