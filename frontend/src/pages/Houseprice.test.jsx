@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import comparables from '../model/comparables-3.0.0.json';
-import model from '../model/king-county-3.0.0.json';
+import comparables from '../model/comparables-3.1.0.json';
+import model from '../model/king-county-3.1.0.json';
+import { estimateMarket } from '../model/marketPredictor';
 import { estimate, predictPayload } from '../model/predictor';
+import wakeComparables from '../model/wake-county-comparables-1.0.0.json';
+import wakeModel from '../model/wake-county-1.0.0.json';
 import Houseprice from './Houseprice';
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -65,3 +68,31 @@ test('what-if sliders re-price the home instantly', async () => {
   expect(screen.getByTestId('whatif-estimate')).toHaveTextContent(money.format(expected));
   expect(screen.queryByText('Same as your estimate')).not.toBeInTheDocument();
 }, 20000);
+
+test('routes a Wake County ZIP to the Wake model, without a bedrooms field', async () => {
+  render(<Houseprice />);
+
+  fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '27615' } });
+  expect(screen.getByTestId('market-note')).toHaveTextContent('Using the Wake County, NC model');
+  expect(screen.queryByLabelText(/Bedrooms/i)).not.toBeInTheDocument();
+
+  const wake = { baths: '2.5', size: '2200', lot_size: '10890', zip_code: '27615' };
+  fireEvent.change(screen.getByLabelText(/Bathrooms/i), { target: { value: wake.baths } });
+  fireEvent.change(screen.getByLabelText(/Home size/i), { target: { value: wake.size } });
+  fireEvent.change(screen.getByLabelText(/^Lot size/i), { target: { value: wake.lot_size } });
+  fireEvent.click(screen.getByRole('button', { name: /Calculate estimate/i }));
+
+  expect(await screen.findByRole('heading', { name: /Market in ZIP 27615/i }, { timeout: 15000 })).toBeInTheDocument();
+  const payload = { ...wake, property_type: '', stories: '', grade: '', condition: '', exterior_wall: '', year_built: '', year_renovated: '', has_basement: '', has_central_air: '' };
+  const expected = estimateMarket(wakeModel, wakeComparables, payload, new Date());
+  expect(screen.getAllByText(money.format(expected.prediction)).length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByText(/Nearest Wake County qualified sales/i)).toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalled();
+}, 20000);
+
+test('explains which markets are covered for other ZIP codes', async () => {
+  render(<Houseprice />);
+
+  fireEvent.change(screen.getByLabelText(/^ZIP code/i), { target: { value: '10001' } });
+  expect(screen.getByRole('status')).toHaveTextContent('We currently cover Seattle (King County, WA) and Wake County, NC.');
+});

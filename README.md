@@ -99,8 +99,22 @@ Parity is checked three ways:
 1. scikit-learn's own `predict`;
 2. an independent Python evaluator that reads only the JSON;
 3. the JavaScript, against
-   [fixtures](frontend/src/model/__fixtures__/parity-3.0.0.json) scored by the backend's own
+   [fixtures](frontend/src/model/__fixtures__/parity-3.1.0.json) scored by the backend's own
    explanation and comparable-search functions.
+
+## Markets
+
+The estimate page picks a model from the ZIP code (`frontend/src/model/markets.json`):
+
+| Market | ZIPs | Model | Browser runtime |
+|---|---|---|---|
+| Seattle (King County, WA) | 98101–98199 | 3.1.0, assessor sales through 2026-10-13 | `predictor.js` |
+| Wake County, NC | 38 ZIPs in the county's qualified sales | wake-county-1.0.0, priced relative to the ZIP's Zillow home value index | `marketPredictor.js` |
+
+Wake County has no bedroom count, so its form has no bedrooms field; its estimate also shows
+the ZIP's latest market conditions. Market data sources and findings:
+[`reports/MARKET_FEATURES_2026.md`](reports/MARKET_FEATURES_2026.md),
+[`reports/WAKE_COUNTY_MODEL.md`](reports/WAKE_COUNTY_MODEL.md).
 
 ## Run it locally
 
@@ -144,6 +158,17 @@ Place the county's `Real Property Sales.zip`, `Residential Building.zip` and `Pa
 .\venv\Scripts\python.exe -m ml.training.tune_king_county        # bounded randomized search
 .\venv\Scripts\python.exe -m ml.training.train_king_county       # evaluate, fit, register
 .\venv\Scripts\python.exe -m ml.training.export_browser_model --fixtures   # update the website
+```
+
+To refresh Seattle with newly published extracts (same tuned recipe), and to rebuild Wake County
+(see `data/README.md` for the Wake and market files):
+
+```powershell
+.\venv\Scripts\python.exe -m ml.data.king_county
+.\venv\Scripts\python.exe -m ml.training.refresh_king_county --register   # evaluate, register, export
+.\venv\Scripts\python.exe -m ml.data.wake_county
+.\venv\Scripts\python.exe -m ml.training.train_wake_county                # ablation, tuning, model
+.\venv\Scripts\python.exe -m ml.training.export_market_model --fixtures   # Wake browser files
 ```
 
 The registry ([`backend/mlmodels/model_registry.json`](backend/mlmodels/model_registry.json))

@@ -1,6 +1,6 @@
-import comparables from './comparables-3.0.0.json';
-import fixtures from './__fixtures__/parity-3.0.0.json';
-import model from './king-county-3.0.0.json';
+import comparables from './comparables-3.1.0.json';
+import fixtures from './__fixtures__/parity-3.1.0.json';
+import model from './king-county-3.1.0.json';
 import {
   buildInputRow,
   estimate,
@@ -58,8 +58,12 @@ describe('parity with the scikit-learn pipeline', () => {
       found.forEach((property, index) => {
         expect(property.similarity).toBeCloseTo(item.comparable_similarity[index], 10);
       });
-      // numpy's argsort may order exactly tied records differently; the set is identical.
-      expect(found.map((property) => property.price).sort()).toEqual([...item.comparable_prices].sort());
+      // numpy's argsort may order exactly tied records differently, including which of two
+      // records tied for the last place is kept, so compare the records ranked above the tie.
+      const cutoff = item.comparable_similarity[item.comparable_similarity.length - 1];
+      const aboveCutoff = (prices, similarity) => prices.filter((_, i) => similarity[i] > cutoff + 1e-12).sort();
+      expect(aboveCutoff(found.map((property) => property.price), found.map((property) => property.similarity)))
+        .toEqual(aboveCutoff(item.comparable_prices, item.comparable_similarity));
     }
   });
 });
@@ -75,7 +79,7 @@ describe('estimate', () => {
     expect(result.confidence.level).toBe('High');
     expect(result.top_factors).toHaveLength(model.features.length);
     expect(result.comparables).toHaveLength(5);
-    expect(result.model_version).toBe('3.0.0');
+    expect(result.model_version).toBe('3.1.0');
   });
 
   test('lowers confidence for values outside the training ranges', () => {

@@ -32,7 +32,8 @@ routing automatically; without this setting, a direct visit to those URLs return
 
 ## The model runs in the browser
 
-The estimate and "How it works" pages need no backend. The King County model (version 3.0.0)
+The estimate and "How it works" pages need no backend. The ZIP code picks the market model
+(`src/model/markets.json`, routed in `src/model/index.js`). The King County model (version 3.1.0)
 is exported to JSON and evaluated client-side by [`src/model/predictor.js`](src/model/predictor.js),
 a line-for-line port of `backend/api/services.py` and `backend/api/validation.py`: the same
 feature engineering, median imputation, scaling, one-hot encoding and gradient-boosted trees,
@@ -102,3 +103,11 @@ written under `test-results/` and are excluded from Git and Docker build context
 
 With the same stack running, `npm run screenshots` regenerates the reviewed desktop and mobile
 portfolio captures under `docs/screenshots/`. The capture fails on browser runtime errors.
+
+### Wake County, NC (format 2)
+
+`src/model/marketPredictor.js` evaluates per-market models exported by
+`python -m ml.training.export_market_model --fixtures`: the property + ZIP market feature
+engineer, the ZHVI-relative target (price = exp(raw + log ZIP home value index)), the latest
+market snapshot per ZIP, Shapley factors and nearest qualified sales.
+`src/model/marketPredictor.test.js` checks it against Python-scored fixtures.

@@ -1,0 +1,47 @@
+{
+  "version": "3.1.0",
+  "previous_version": "3.0.0",
+  "previous_model_on_new_sales": {
+    "since": "2026-07-22",
+    "rows": 1238,
+    "mae": 166031.19872493736,
+    "rmse": 297502.37896830443,
+    "r2": 0.864447302597101,
+    "median_ape": 0.10646457535827172,
+    "within_10pct": 0.47334410339256866,
+    "date_range": [
+      "2026-07-23",
+      "2026-10-13"
+    ]
+  },
+  "holdout": {
+    "holdout_start": "2026-01-01",
+    "development_rows": 78424,
+    "rows": 4517,
+    "mae": 155804.20914602338,
+    "rmse": 315411.26415410417,
+    "r2": 0.8267260727300462,
+    "median_ape": 0.09762221280805546,
+    "within_10pct": 0.5096302855877795
+  },
+  "prediction_interval": {
+    "method": "2026 temporal-holdout residual quantiles",
+    "nominal_coverage": 0.9,
+    "lower_residual_quantile": -275039.35333681654,
+    "upper_residual_quantile": 409815.6372427162,
+    "empirical_coverage": 0.8999335842373256
+  },
+  "rows": 84965,
+  "date_range": [
+    "2015-01-02",
+    "2026-10-13"
+  ],
+  "registered": false,
+  "runtime": {
+    "python": "3.13.16",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scikit_learn": "1.9.1",
+    "joblib": "1.6.0"
+  }
+}

@@ -1,34 +1,18 @@
 import { useMemo, useState } from 'react';
-import { FaArrowRight, FaCheck, FaHome, FaMagic, FaRedo } from 'react-icons/fa';
-import { requestEstimate } from '../model';
+import { FaArrowRight, FaCheck, FaHome, FaMagic, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
+import { coverageMessage, DEFAULT_MARKET, marketForZip, requestEstimate } from '../model';
+import { ALL_FIELD_NAMES, MARKET_FORMS } from './marketForms';
 import WhatIf from './WhatIf';
 import './All.css';
 
 const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-
-const fields = [
-  { name: 'beds', label: 'Bedrooms', hint: 'Number of bedrooms', min: 1, step: 1, group: 'Property basics' },
-  { name: 'baths', label: 'Bathrooms', hint: 'Number of bathrooms', min: 0.5, step: 0.5, group: 'Property basics' },
-  { name: 'size', label: 'Home size', hint: 'Square feet', min: 1, step: 1, group: 'Property basics' },
-  { name: 'lot_size', label: 'Lot size', hint: 'Square feet; use 0 when unavailable', min: 0, step: 1, group: 'Property basics' },
-  { name: 'zip_code', label: 'ZIP code', hint: 'Seattle-area ZIP from 98101 to 98199', min: 98101, max: 98199, step: 1, group: 'Location' },
-  { name: 'stories', label: 'Stories', hint: 'Above-ground story count', min: 0.5, max: 10, step: 0.5, group: 'Building details', required: false },
-  { name: 'grade', label: 'Building grade', hint: 'Construction quality recorded by the assessor', kind: 'select', group: 'Building details', required: false, options: [['6', '6 — Low'], ['7', '7 — Average'], ['8', '8 — Good'], ['9', '9 — Better'], ['10', '10 — Very good'], ['11', '11 — Excellent'], ['12', '12 — Luxury'], ['13', '13 — Exceptional']] },
-  { name: 'condition', label: 'Condition', hint: 'Current physical condition', kind: 'select', group: 'Building details', required: false, options: [['1', 'Poor'], ['2', 'Fair'], ['3', 'Average'], ['4', 'Good'], ['5', 'Very good']] },
-  { name: 'year_built', label: 'Year built', min: 1800, max: new Date().getFullYear(), step: 1, group: 'Age and renovation', required: false },
-  { name: 'year_renovated', label: 'Year renovated', hint: 'Leave blank if never renovated', min: 1800, max: new Date().getFullYear(), step: 1, group: 'Age and renovation', required: false },
-  { name: 'finished_basement_sqft', label: 'Finished basement', hint: 'Finished basement square feet', min: 0, step: 1, group: 'Additional spaces', required: false },
-  { name: 'garage_sqft', label: 'Garage area', hint: 'Attached and basement garage square feet', min: 0, step: 1, group: 'Additional spaces', required: false },
-  { name: 'fireplaces', label: 'Fireplaces', min: 0, max: 30, step: 1, group: 'Additional spaces', required: false },
-  { name: 'has_view', label: 'Scenic view', hint: 'Whether the property has a recorded view', kind: 'select', group: 'Additional spaces', required: false, options: [['0', 'No'], ['1', 'Yes']] },
-];
-
-const sampleHome = {
-  beds: '3', baths: '2.5', size: '2590', lot_size: '6000', zip_code: '98144',
-  stories: '2', grade: '8', condition: '3', year_built: '1996', year_renovated: '',
-  finished_basement_sqft: '450', garage_sqft: '400', fireplaces: '1', has_view: '0',
+const percent = (value, digits = 0) => `${(value * 100).toFixed(digits)}%`;
+const signedPercent = (value) => `${value >= 0 ? '+' : '−'}${Math.abs(value * 100).toFixed(1)}%`;
+const emptyForm = Object.fromEntries(ALL_FIELD_NAMES.map((name) => [name, '']));
+const comparableNotes = {
+  'king-county': 'Nearest privacy-safe King County Assessor records—not verified active listings or appraisals.',
+  'wake-county': 'Nearest Wake County qualified sales (arm’s-length sales reviewed by county appraisers)—not active listings or appraisals.',
 };
-const emptyForm = Object.fromEntries(fields.map(({ name }) => [name, '']));
 
 function loadRecentEstimates() {
   try {
@@ -38,54 +22,90 @@ function loadRecentEstimates() {
   }
 }
 
+function saveRecentEstimates(items) {
+  try {
+    localStorage.setItem('havenvalue-recent', JSON.stringify(items));
+  } catch {
+    // Storage can be unavailable (private mode); recent estimates are a convenience only.
+  }
+}
+
+function MarketContext({ context }) {
+  if (!context) return null;
+  const month = context.month ? new Date(`${context.month}-15T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : '';
+  return (
+    <section className="recent-card" aria-labelledby="market-title">
+      <h2 id="market-title"><FaMapMarkerAlt /> Market in ZIP {context.zip}</h2>
+      <p className="factor-note">Latest monthly figures{month ? ` (${month})` : ''}. The estimate scales with this ZIP’s Zillow home value index.</p>
+      {context.zhvi != null && <div className="recent-item"><span>Typical home value (Zillow)</span><strong>{formatter.format(context.zhvi)}{context.zhvi_yoy != null && <small> {signedPercent(context.zhvi_yoy)} / yr</small>}</strong></div>}
+      {context.days_on_market != null && <div className="recent-item"><span>Median days on market</span><strong>{Math.round(context.days_on_market)}</strong></div>}
+      {context.price_reduced_share != null && <div className="recent-item"><span>Listings with a price cut</span><strong>{percent(context.price_reduced_share)}</strong></div>}
+      {context.inventory_yoy != null && <div className="recent-item"><span>Active listings vs. a year ago</span><strong>{signedPercent(context.inventory_yoy)}</strong></div>}
+      {context.mortgage_rate_30y != null && <div className="recent-item"><span>30-year fixed rate (Freddie Mac)</span><strong>{context.mortgage_rate_30y.toFixed(2)}%</strong></div>}
+    </section>
+  );
+}
+
 function Houseprice() {
   const [formData, setFormData] = useState(emptyForm);
-  const [prediction, setPrediction] = useState(null);
-  const [estimateRange, setEstimateRange] = useState(null);
-  const [confidence, setConfidence] = useState(null);
-  const [modelFactors, setModelFactors] = useState([]);
-  const [comparables, setComparables] = useState([]);
-  const [disclaimer, setDisclaimer] = useState('');
+  const [result, setResult] = useState(null);
   const [estimatedInputs, setEstimatedInputs] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState(loadRecentEstimates);
-  const completed = useMemo(() => Object.values(formData).filter(Boolean).length, [formData]);
 
+  const zipText = String(formData.zip_code ?? '').trim();
+  const detectedMarket = marketForZip(zipText);
+  const marketId = detectedMarket?.id ?? DEFAULT_MARKET;
+  const form = MARKET_FORMS[marketId];
+  const uncovered = /^\d{5}$/.test(zipText) && !detectedMarket;
+  const completed = useMemo(() => form.fields.filter(({ name }) => formData[name]).length, [form, formData]);
+
+  const clearResult = () => { setResult(null); setEstimatedInputs(null); setError(''); };
   const handleChange = ({ target: { name, value } }) => setFormData((current) => ({ ...current, [name]: value }));
-  const useSample = () => { setFormData(sampleHome); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null); setError(''); };
-  const reset = () => { setFormData(emptyForm); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null); setError(''); };
+  const useSample = () => { setFormData({ ...emptyForm, ...form.sample }); clearResult(); };
+  const reset = () => { setFormData(emptyForm); clearResult(); };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setLoading(true); setError(''); setPrediction(null); setEstimateRange(null); setConfidence(null); setModelFactors([]); setComparables([]); setDisclaimer(''); setEstimatedInputs(null);
+    setLoading(true); clearResult();
+    // Only this market's fields are sent; the model runs in the browser (src/model).
+    const payload = Object.fromEntries(form.fields.map(({ name }) => [name, formData[name]]));
     try {
-      // The model runs in the browser (src/model); no server request is made.
-      const result = await requestEstimate(formData);
-      setPrediction(result.prediction); setEstimateRange(result.range ?? null); setConfidence(result.confidence ?? null); setModelFactors(result.top_factors ?? result.model_factors ?? []); setComparables(result.comparables ?? []); setDisclaimer(result.disclaimer ?? ''); setEstimatedInputs({ ...formData });
-      const nextRecent = [{ value: result.prediction, profile: `${formData.beds} bd / ${formData.baths} ba`, date: new Date().toLocaleDateString() }, ...recent].slice(0, 3);
-      setRecent(nextRecent); localStorage.setItem('havenvalue-recent', JSON.stringify(nextRecent));
+      const estimate = await requestEstimate(payload);
+      setResult(estimate); setEstimatedInputs(payload);
+      const nextRecent = [{ value: estimate.prediction, profile: `${MARKET_FORMS[estimate.market].profile(payload)} · ${estimate.market_name}`, date: new Date().toLocaleDateString() }, ...recent].slice(0, 3);
+      setRecent(nextRecent); saveRecentEstimates(nextRecent);
     } catch (estimateError) { setError(estimateError.message || 'Unable to calculate an estimate right now.'); } finally { setLoading(false); }
   };
 
-  const groups = [...new Set(fields.map(({ group }) => group))];
+  const groups = [...new Set(form.fields.map(({ group }) => group))];
+  const prediction = result?.prediction ?? null;
+  const estimateRange = result?.range ?? null;
+  const confidence = result?.confidence ?? null;
+  const modelFactors = result?.top_factors ?? result?.model_factors ?? [];
+  const comparables = result?.comparables ?? [];
+  const resultForm = result ? MARKET_FORMS[result.market] : form;
   return (
     <main className="estimator-page section-shell">
-      <div className="estimator-intro"><p className="eyebrow">Free home estimate</p><h1>Start with the details you know.</h1><p>Complete the property profile for a personalized estimate. Your progress is saved only in this browser.</p></div>
+      <div className="estimator-intro"><p className="eyebrow">Free home estimate</p><h1>Start with the details you know.</h1><p>Enter a ZIP code in Seattle or Wake County, NC, then complete the property profile. Your progress is saved only in this browser.</p></div>
       <div className="estimator-layout">
         <section className="estimator-card">
-          <div className="form-toolbar"><div><strong>Property profile</strong><span>{completed} of {fields.length} fields complete</span></div><div className="toolbar-actions"><button type="button" className="button button-quiet" onClick={useSample}><FaMagic /> Use sample</button><button type="button" className="icon-button" onClick={reset} aria-label="Reset form"><FaRedo /></button></div></div>
-          <div className="progress-track"><span style={{ width: `${(completed / fields.length) * 100}%` }} /></div>
+          <div className="form-toolbar"><div><strong>Property profile</strong><span>{completed} of {form.fields.length} fields complete</span></div><div className="toolbar-actions"><button type="button" className="button button-quiet" onClick={useSample}><FaMagic /> Use sample</button><button type="button" className="icon-button" onClick={reset} aria-label="Reset form"><FaRedo /></button></div></div>
+          <div className="progress-track"><span style={{ width: `${(completed / form.fields.length) * 100}%` }} /></div>
+          {detectedMarket && <p className="market-note" data-testid="market-note"><FaMapMarkerAlt /> Using the {detectedMarket.name} model</p>}
+          {uncovered && <p className="market-note market-note-warning" role="status">{coverageMessage()}</p>}
           <form className="estimate-form" onSubmit={handleSubmit}>
-            {groups.map((group) => <fieldset key={group}><legend>{group}</legend><div className="field-grid">{fields.filter((field) => field.group === group).map((field) => <label className="field" key={field.name}><span>{field.label}{field.required === false && <em> optional</em>}</span>{field.kind === 'select' ? <select name={field.name} value={formData[field.name]} onChange={handleChange} required={field.required !== false}><option value="">Select one</option>{field.options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select> : <input type="number" name={field.name} value={formData[field.name]} onChange={handleChange} min={field.min} max={field.max} step={field.step} required={field.required !== false} />}{field.hint && <small>{field.hint}</small>}</label>)}</div></fieldset>)}
+            {groups.map((group) => <fieldset key={group}><legend>{group}</legend><div className="field-grid">{form.fields.filter((field) => field.group === group).map((field) => <label className="field" key={field.name}><span>{field.label}{field.required === false && <em> optional</em>}</span>{field.kind === 'select' ? <select name={field.name} value={formData[field.name]} onChange={handleChange} required={field.required !== false}><option value="">Select one</option>{field.options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select> : <input type="number" name={field.name} value={formData[field.name]} onChange={handleChange} min={field.min} max={field.max} step={field.step} required={field.required !== false} />}{field.hint && <small>{field.hint}</small>}</label>)}</div></fieldset>)}
             <button className="button button-primary submit-button" type="submit" disabled={loading}>{loading ? 'Calculating estimate…' : <>Calculate estimate <FaArrowRight /></>}</button>
           </form>
         </section>
         <aside className="result-column">
-          <section className={`result-card ${prediction !== null ? 'has-result' : ''}`} aria-live="polite">{prediction === null ? <><span className="result-icon"><FaHome /></span><p className="eyebrow">Your result</p><h2>Your estimate will appear here.</h2><p>Enter your property details and we’ll calculate a data-informed value.</p></> : <><span className="result-icon"><FaCheck /></span><p className="eyebrow">Estimated value</p><strong className="price">{formatter.format(prediction)}</strong>{estimateRange && <div className="estimate-range"><span>{estimateRange.nominal_coverage ? `${Math.round(estimateRange.nominal_coverage * 100)}% empirical range` : 'Likely range'}</span><strong>{formatter.format(estimateRange.low)} – {formatter.format(estimateRange.high)}</strong></div>}{confidence && <div className="confidence"><span>Input confidence</span><strong>{confidence.level}</strong></div>}<p>{confidence?.message}</p><small className="estimate-disclaimer">{disclaimer}</small></>}{error && <p className="error-message" role="alert">{error}</p>}</section>
-          {prediction !== null && estimatedInputs && <WhatIf inputs={estimatedInputs} basePrediction={prediction} />}
-          {modelFactors.length > 0 && <section className="recent-card"><h2>What shaped this estimate</h2><p className="factor-note">Per-property contributions compared with a typical Seattle property. Positive values raise the estimate; negative values lower it.</p>{modelFactors.slice(0, 8).map((factor) => <div className="recent-item" key={factor.feature}><span>{factor.label ?? factor.feature.replaceAll('_', ' ')}</span><strong className={(factor.contribution ?? 0) >= 0 ? 'positive-factor' : 'negative-factor'}>{factor.contribution !== undefined ? `${factor.contribution >= 0 ? '+' : '−'}${formatter.format(Math.abs(factor.contribution))}` : formatter.format(factor.abs_importance ?? Math.abs(factor.coefficient ?? 0))}</strong></div>)}</section>}
-          {comparables.length > 0 && <section className="recent-card"><h2>Similar historical sales</h2><p className="factor-note">Nearest privacy-safe King County Assessor records—not verified active listings or appraisals.</p>{comparables.map((property, index) => <div className="comparable-item" key={`${property.zip_code}-${property.price}-${index}`}><div><strong>{formatter.format(property.price)}</strong><span>{property.beds} bd · {property.baths} ba · {Number(property.size).toLocaleString()} sq ft</span></div><div><span>ZIP {property.zip_code}</span><small>{Math.round(property.similarity * 100)}% similar</small></div></div>)}</section>}
+          <section className={`result-card ${prediction !== null ? 'has-result' : ''}`} aria-live="polite">{prediction === null ? <><span className="result-icon"><FaHome /></span><p className="eyebrow">Your result</p><h2>Your estimate will appear here.</h2><p>Enter your property details and we’ll calculate a data-informed value.</p></> : <><span className="result-icon"><FaCheck /></span><p className="eyebrow">Estimated value</p><strong className="price">{formatter.format(prediction)}</strong>{estimateRange && <div className="estimate-range"><span>{estimateRange.nominal_coverage ? `${Math.round(estimateRange.nominal_coverage * 100)}% empirical range` : 'Likely range'}</span><strong>{formatter.format(estimateRange.low)} – {formatter.format(estimateRange.high)}</strong></div>}{confidence && <div className="confidence"><span>Input confidence</span><strong>{confidence.level}</strong></div>}<p>{confidence?.message}</p><small className="estimate-disclaimer">{result.disclaimer}</small></>}{error && <p className="error-message" role="alert">{error}</p>}</section>
+          {prediction !== null && estimatedInputs && <WhatIf market={result.market} inputs={estimatedInputs} basePrediction={prediction} />}
+          {result?.market_context && <MarketContext context={result.market_context} />}
+          {modelFactors.length > 0 && <section className="recent-card"><h2>What shaped this estimate</h2><p className="factor-note">Per-property contributions compared with a typical {resultForm.placeLabel} property. Positive values raise the estimate; negative values lower it.</p>{modelFactors.slice(0, 8).map((factor) => <div className="recent-item" key={factor.feature}><span>{factor.label ?? factor.feature.replaceAll('_', ' ')}</span><strong className={(factor.contribution ?? 0) >= 0 ? 'positive-factor' : 'negative-factor'}>{factor.contribution !== undefined ? `${factor.contribution >= 0 ? '+' : '−'}${formatter.format(Math.abs(factor.contribution))}` : formatter.format(factor.abs_importance ?? Math.abs(factor.coefficient ?? 0))}</strong></div>)}</section>}
+          {comparables.length > 0 && <section className="recent-card"><h2>Similar historical sales</h2><p className="factor-note">{comparableNotes[result.market]}</p>{comparables.map((property, index) => <div className="comparable-item" key={`${property.zip_code}-${property.price}-${index}`}><div><strong>{formatter.format(property.price)}</strong><span>{property.beds !== undefined && `${property.beds} bd · `}{property.baths} ba · {Number(property.size).toLocaleString()} sq ft{property.property_type ? ` · ${property.property_type}` : ''}</span></div><div><span>ZIP {property.zip_code}</span><small>{Math.round(property.similarity * 100)}% similar</small></div></div>)}</section>}
           {recent.length > 0 && <section className="recent-card"><h2>Recent estimates</h2>{recent.map((item, index) => <div className="recent-item" key={`${item.date}-${index}`}><span>{item.profile ?? 'Property profile'} · {item.date}</span><strong>{formatter.format(item.value)}</strong></div>)}</section>}
         </aside>
       </div>

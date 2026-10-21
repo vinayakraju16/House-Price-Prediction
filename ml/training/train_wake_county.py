@@ -287,13 +287,43 @@ def save_outputs(results, variant, params, data, market) -> None:
     RESULT_PATH.write_text(json.dumps(results, indent=2), encoding="utf-8", newline="\n")
     REPORT_PATH.write_text(render_report(results), encoding="utf-8", newline="\n")
 
+    save_model(results, variant, params, data, market)
+
+
+def _defaults(data: pd.DataFrame) -> dict:
+    defaults = {}
+    for name in [*NUMERIC, *CATEGORICAL]:
+        if name == "year_renovated":
+            defaults[name] = None
+        elif name in CATEGORICAL:
+            defaults[name] = str(data[name].mode(dropna=True).iloc[0])
+        else:
+            defaults[name] = float(data[name].median())
+    return defaults
+
+
+def _ranges(data: pd.DataFrame) -> dict:
+    ranges = {}
+    for name in NUMERIC:
+        values = pd.to_numeric(data[name], errors="coerce").dropna()
+        if not values.empty:
+            ranges[name] = {"minimum": float(values.min()), "p05": float(values.quantile(0.05)),
+                            "p95": float(values.quantile(0.95)), "maximum": float(values.max())}
+    return ranges
+
+
+def save_model(results, variant, params, data, market) -> None:
     final = build_model(variant, params).fit(data[variant.columns], data["price"])
     snapshot = latest_snapshot(market, data["zip_code"].unique())
     version_dir = MODEL_DIR / VERSION
     version_dir.mkdir(parents=True, exist_ok=True)
     model_path = version_dir / "model.joblib"
+    comparable_columns = ["baths", "size", "lot_size", "zip_code", "price", "sale_date",
+                          "year_built", "property_type"]
     joblib.dump({"best_model": final, "feature_names": variant.columns,
                  "market_snapshot": snapshot.to_dict(orient="records"),
+                 "comparables": data.sort_values("sale_date")[comparable_columns]
+                 .tail(15_000).to_dict(orient="records"),
                  "model_version": VERSION}, model_path, compress=3)
     metadata = {
         "model_version": VERSION,
@@ -302,6 +332,11 @@ def save_outputs(results, variant, params, data, market) -> None:
         "variant": variant.name,
         "features": variant.columns,
         "market_features": list(variant.market),
+        "excluded_from_model": list(variant.drop),
+        "required_features": ["baths", "size", "lot_size", "zip_code"],
+        "feature_defaults": _defaults(data),
+        "typical_feature_ranges": _ranges(data),
+        "zip_codes": sorted(data["zip_code"].unique().tolist()),
         "target": "log(price / ZHVI)" if variant.relative else "log1p(price)",
         "hyperparameters": {**DEFAULT_PARAMS, **params},
         "training_rows": len(data),
@@ -409,8 +444,16 @@ def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--market-dir", type=Path, default=MARKET_DIR)
     parser.add_argument("--trials", type=int, default=12)
+    parser.add_argument("--final-only", action="store_true",
+                        help="refit and save the final model from the saved results JSON")
     args = parser.parse_args(argv)
-    run(args.market_dir, args.trials)
+    if args.final_only:
+        results = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+        variant = next(v for v in VARIANTS if v.name == results["selected_variant"])
+        data, market = load_dataset(args.market_dir)
+        save_model(results, variant, results["tuning"]["best_params"], data, market)
+    else:
+        run(args.market_dir, args.trials)
 
 
 if __name__ == "__main__":

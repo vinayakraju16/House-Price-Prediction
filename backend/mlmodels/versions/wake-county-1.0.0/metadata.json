@@ -1,0 +1,220 @@
+{
+  "model_version": "wake-county-1.0.0",
+  "status": "experimental",
+  "market": "Wake County, NC",
+  "variant": "ZHVI-relative: + ZHVI momentum",
+  "features": [
+    "baths",
+    "size",
+    "lot_size",
+    "stories",
+    "grade",
+    "condition",
+    "year_built",
+    "year_renovated",
+    "has_basement",
+    "has_central_air",
+    "sale_year",
+    "sale_month",
+    "zip_code",
+    "heat_system",
+    "exterior_wall",
+    "property_type",
+    "zhvi",
+    "zhvi_yoy",
+    "median_household_income",
+    "owner_occupied_share"
+  ],
+  "market_features": [
+    "zhvi",
+    "zhvi_yoy",
+    "median_household_income",
+    "owner_occupied_share"
+  ],
+  "excluded_from_model": [
+    "sale_year",
+    "sale_month"
+  ],
+  "required_features": [
+    "baths",
+    "size",
+    "lot_size",
+    "zip_code"
+  ],
+  "feature_defaults": {
+    "baths": 2.5,
+    "size": 2196.0,
+    "lot_size": 7841.0,
+    "stories": 2.0,
+    "grade": 3.1,
+    "condition": 82.0,
+    "year_built": 2012.0,
+    "year_renovated": null,
+    "has_basement": 0.0,
+    "has_central_air": 1.0,
+    "sale_year": 2025.0,
+    "sale_month": 7.0,
+    "zip_code": "27587",
+    "heat_system": "A",
+    "exterior_wall": "A",
+    "property_type": "Conventional"
+  },
+  "typical_feature_ranges": {
+    "baths": {
+      "minimum": 1.0,
+      "p05": 2.0,
+      "p95": 3.5,
+      "maximum": 3.5
+    },
+    "size": {
+      "minimum": 480.0,
+      "p05": 1200.0,
+      "p95": 4130.75,
+      "maximum": 20248.0
+    },
+    "lot_size": {
+      "minimum": 436.0,
+      "p05": 1742.0,
+      "p95": 43560.0,
+      "maximum": 1856963.0
+    },
+    "stories": {
+      "minimum": 1.0,
+      "p05": 1.0,
+      "p95": 2.0,
+      "maximum": 3.0
+    },
+    "grade": {
+      "minimum": 0.85,
+      "p05": 2.95,
+      "p95": 5.1,
+      "maximum": 6.95
+    },
+    "condition": {
+      "minimum": 0.0,
+      "p05": 60.0,
+      "p95": 97.0,
+      "maximum": 141.0
+    },
+    "year_built": {
+      "minimum": 1854.0,
+      "p05": 1965.0,
+      "p95": 2025.0,
+      "maximum": 2026.0
+    },
+    "year_renovated": {
+      "minimum": 1995.0,
+      "p05": 2009.0,
+      "p95": 2025.0,
+      "maximum": 2026.0
+    },
+    "has_basement": {
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 1.0,
+      "maximum": 1.0
+    },
+    "has_central_air": {
+      "minimum": 0.0,
+      "p05": 1.0,
+      "p95": 1.0,
+      "maximum": 1.0
+    },
+    "sale_year": {
+      "minimum": 2024.0,
+      "p05": 2024.0,
+      "p95": 2026.0,
+      "maximum": 2026.0
+    },
+    "sale_month": {
+      "minimum": 1.0,
+      "p05": 1.0,
+      "p95": 12.0,
+      "maximum": 12.0
+    }
+  },
+  "zip_codes": [
+    "27501",
+    "27502",
+    "27511",
+    "27513",
+    "27518",
+    "27519",
+    "27520",
+    "27522",
+    "27523",
+    "27526",
+    "27529",
+    "27539",
+    "27540",
+    "27545",
+    "27560",
+    "27562",
+    "27571",
+    "27587",
+    "27591",
+    "27592",
+    "27596",
+    "27597",
+    "27601",
+    "27603",
+    "27604",
+    "27605",
+    "27606",
+    "27607",
+    "27608",
+    "27609",
+    "27610",
+    "27612",
+    "27613",
+    "27614",
+    "27615",
+    "27616",
+    "27617",
+    "27703"
+  ],
+  "target": "log(price / ZHVI)",
+  "hyperparameters": {
+    "max_iter": 300,
+    "max_leaf_nodes": 31,
+    "learning_rate": 0.1,
+    "l2_regularization": 20.0,
+    "min_samples_leaf": 80,
+    "random_state": 42,
+    "max_bins": 127
+  },
+  "training_rows": 36386,
+  "training_date": "2026-10-21T21:58:14.017552+00:00",
+  "metrics": {
+    "rows": 9206,
+    "mae": 70361.27997758237,
+    "rmse": 165936.2650796064,
+    "r2": 0.8226068117953897,
+    "median_ape": 0.0784210041291471,
+    "within_10pct": 0.6068868129480773,
+    "evaluation_label": "temporal holdout from 2026-04-01"
+  },
+  "prediction_interval": {
+    "method": "holdout log-residual quantiles (percentage band around the estimate)",
+    "nominal_coverage": 0.9,
+    "lower_ratio": 0.8176566337151141,
+    "upper_ratio": 1.3135862617849838,
+    "empirical_coverage": 0.8998479252661308
+  },
+  "market_snapshot_month_index": 24320,
+  "runtime": {
+    "python": "3.13.16",
+    "scikit_learn": "1.9.1",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "artifact": {
+    "relative_path": "backend/mlmodels/versions/wake-county-1.0.0/model.joblib",
+    "sha256": "b1b9c106dd0a05d06ad9e10b4b8c38c19f2a82af283309eb196c2723f00908ee"
+  },
+  "limitations": [
+    "Wake County publishes no bedroom count; the model has no beds input.",
+    "Only two years of qualified sales are published, so long-run cycles are unseen.",
+    "Market features are ZIP-level; they do not describe individual streets."
+  ]
+}

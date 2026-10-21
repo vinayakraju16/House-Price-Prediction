@@ -21,7 +21,7 @@ const Dashboard = () => (
       </div>
     </section>
     <section className="benefits section-shell">
-      <article><span className="icon-badge"><FaChartLine /></span><h2>Data-informed</h2><p>Our Seattle model evaluates location, size, age, quality, condition, and additional spaces together.</p></article>
+      <article><span className="icon-badge"><FaChartLine /></span><h2>Data-informed</h2><p>Models for Seattle and Wake County, NC weigh location, size, age, quality, condition, and local market conditions together.</p></article>
       <article><span className="icon-badge"><FaClock /></span><h2>Fast to use</h2><p>Use a sample profile or enter your own home details.</p></article>
       <article><span className="icon-badge"><FaShieldAlt /></span><h2>Private by design</h2><p>We only use the values needed to calculate an estimate.</p></article>
     </section>

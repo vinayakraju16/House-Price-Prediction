@@ -68,9 +68,11 @@ Holdout 2025-01-01 to 2026-07-22, 8,637 sales, same tuned hyperparameters as 3.0
    the ZIP's current Zillow value, so when a ZIP cools or heats up the estimate moves with
    it at the next monthly ZHVI refresh, without retraining. Accuracy is about the same
    today; the gain is staying current.
-4. **For Seattle, the deployed model is ageing faster than features can fix:** its median
-   error rose from 8.7% (2025) to 10.4% (2026). Retraining 3.0.0 with 2025 sales (holding
-   out 2026) is the biggest available improvement there.
+4. **For Seattle, staleness matters more than features:** a model fit on sales through 2024
+   had 8.7% median error on 2025 sales but 10.4% on 2026 sales. The deployed 3.0.0 was
+   already refit on every sale through 2026-07-22 (its 2025–2026 holdout was only for
+   evaluation), so the practical lesson is to refresh it regularly with new assessor
+   extracts rather than to add market inputs.
 5. Wake County has no bedroom count; Seattle has no new-construction effect worth
    measuring yet. Per-market models are the right structure.
 
