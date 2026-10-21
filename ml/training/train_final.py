@@ -14,7 +14,6 @@ import hashlib
 import json
 import os
 import platform
-import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,8 +35,6 @@ TUNING_PATH = ROOT / "reports" / "tuning_results.json"
 EVALUATION_PATH = ROOT / "reports" / "model_evaluation.json"
 MODEL_DIR = ROOT / "backend" / "mlmodels"
 REGISTRY_PATH = MODEL_DIR / "model_registry.json"
-COMPATIBILITY_MODEL_PATH = MODEL_DIR / "trained_models.pkl"
-COMPATIBILITY_METADATA_PATH = MODEL_DIR / "metadata.json"
 MODEL_VERSION = "2.2.0"
 FEATURES = ["beds", "baths", "size", "lot_size", "zip_code"]
 TARGET = "price"
@@ -213,8 +210,6 @@ def main(track_mlflow=False, tracking_uri=None, experiment_name="house-price-sea
     registry["active_version"] = MODEL_VERSION
     registry["updated_at"] = datetime.now(timezone.utc).isoformat()
     REGISTRY_PATH.write_text(json.dumps(registry, indent=2), encoding="utf-8", newline="\n")
-    shutil.copyfile(model_path, COMPATIBILITY_MODEL_PATH)
-    shutil.copyfile(metadata_path, COMPATIBILITY_METADATA_PATH)
     print(f"Registered Seattle model {MODEL_VERSION} at {model_path.relative_to(ROOT)}")
 
 

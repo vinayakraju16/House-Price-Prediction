@@ -47,7 +47,7 @@ def _registered_model_paths(version=None):
     model_dir = (Path(settings.BASE_DIR) / "mlmodels").resolve()
     registry_path = model_dir / "model_registry.json"
     if not registry_path.exists():
-        return model_dir / "trained_models.pkl", model_dir / "metadata.json", "legacy"
+        raise RuntimeError(f"Model registry not found at {registry_path}.")
 
     with registry_path.open(encoding="utf-8") as registry_file:
         registry = json.load(registry_file)
@@ -91,29 +91,19 @@ def load_models(version=None):
     if not isinstance(model_bundle, dict):
         raise RuntimeError("The model artifact must contain a dictionary of model settings.")
 
-    if "best_model" in model_bundle:
-        loaded = {
-            "model": model_bundle["best_model"],
-            "feature_names": model_bundle.get("feature_names", FEATURE_NAMES),
-            "tier_mapping": model_bundle.get("tier_mapping", {}),
-            "model_version": model_bundle.get("model_version", selected_version),
-            "comparables": model_bundle.get("comparables"),
-            "required_features": model_bundle.get("required_features", FEATURE_NAMES),
-            "optional_features": model_bundle.get("optional_features", ()),
-        }
-        logger.info("Model loaded", extra={"event": "model_loaded", "model_version": loaded["model_version"]})
-        return loaded
-
-    elastic_net = model_bundle.get("best_elastic_net")
-    gradient_boost = model_bundle.get("best_gboost")
-    if elastic_net is None or gradient_boost is None:
+    if "best_model" not in model_bundle:
         raise RuntimeError("The model artifact is missing the required model bundle.")
-    return {
-        "model": gradient_boost,
-        "feature_names": FEATURE_NAMES,
-        "tier_mapping": {},
-        "model_version": selected_version,
+    loaded = {
+        "model": model_bundle["best_model"],
+        "feature_names": model_bundle.get("feature_names", FEATURE_NAMES),
+        "tier_mapping": model_bundle.get("tier_mapping", {}),
+        "model_version": model_bundle.get("model_version", selected_version),
+        "comparables": model_bundle.get("comparables"),
+        "required_features": model_bundle.get("required_features", FEATURE_NAMES),
+        "optional_features": model_bundle.get("optional_features", ()),
     }
+    logger.info("Model loaded", extra={"event": "model_loaded", "model_version": loaded["model_version"]})
+    return loaded
 
 
 @lru_cache(maxsize=None)
