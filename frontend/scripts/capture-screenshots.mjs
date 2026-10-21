@@ -22,15 +22,9 @@ async function submitValuation(page) {
   for (const [label, value] of Object.entries(property)) {
     await page.getByLabel(label).fill(value);
   }
-  const responsePromise = page.waitForResponse(
-    (response) => response.url().endsWith('/api/predict/') && response.request().method() === 'POST',
-  );
+  // The estimate is computed in the browser; wait for the rendered result instead of an API call.
   await page.getByRole('button', { name: /Calculate estimate/i }).click();
-  const response = await responsePromise;
-  if (!response.ok()) {
-    throw new Error(`Prediction request failed with HTTP ${response.status()}`);
-  }
-  await page.getByRole('heading', { name: 'Similar historical records' }).waitFor();
+  await page.getByRole('heading', { name: 'Similar historical sales' }).waitFor({ timeout: 15000 });
 }
 
 async function capture(page, filename) {

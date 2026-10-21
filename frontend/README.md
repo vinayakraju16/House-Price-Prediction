@@ -30,12 +30,30 @@ only `frontend/dist`, whose scripts and styles are compiled under `/assets/`.
 `/house-price` and `/about` to resolve — unlike Cloudflare Pages, Workers does not infer SPA
 routing automatically; without this setting, a direct visit to those URLs returns a 404.
 
-Set `VITE_API_URL` to the public backend origin before building. The value is embedded in the
-frontend bundle by Vite. No public backend origin is configured yet (see the root
-`CLOUDFLARE_DEPLOYMENT_AUDIT.md`), so the deployed build currently falls back to
-`http://localhost:8000`, which is unreachable from the deployed site — the prediction form will
-show a connection error until `VITE_API_URL` is set to a real hosted backend and the site is
-rebuilt and redeployed.
+## The model runs in the browser
+
+The estimate and "How it works" pages need no backend. The King County model (version 3.0.0)
+is exported to JSON and evaluated client-side by [`src/model/predictor.js`](src/model/predictor.js),
+a line-for-line port of `backend/api/services.py` and `backend/api/validation.py`: the same
+feature engineering, median imputation, scaling, one-hot encoding and gradient-boosted trees,
+plus the empirical price range, permutation-Shapley factors and nearest historical sales.
+The JSON is loaded on demand, so the landing page stays small.
+
+After retraining or registering a new model version, regenerate the exported files from the
+repository root with the project venv (scikit-learn 1.4.2) and commit them:
+
+```powershell
+.\venv\Scripts\python.exe -m ml.training.export_browser_model --fixtures
+```
+
+This rewrites `src/model/king-county-<version>.json`, `src/model/comparables-<version>.json`
+and `src/model/__fixtures__/parity-<version>.json`. The fixtures are scored by the real
+scikit-learn pipeline, and `src/model/predictor.test.js` fails if the JavaScript port ever
+disagrees with them. If the version changes, update the two import paths in
+`src/model/index.js`.
+
+The Django API is still used by Docker Compose and the Harris County page, which reads
+`VITE_API_URL` (see `src/config.js`).
 
 React 18 client built with Vite and tested with Vitest + Testing Library.
 
@@ -46,8 +64,8 @@ npm ci
 npm start
 ```
 
-The development server listens on `http://localhost:3000`. The client uses
-`http://localhost:8000` as the default Django API origin. Override it before startup when needed:
+The development server listens on `http://localhost:3000`. Estimates work without starting
+Django. Pages that still call the API use `VITE_API_URL`; override it before startup when needed:
 
 ```powershell
 $env:VITE_API_URL = "https://api.example.com"
@@ -72,7 +90,8 @@ Docker Compose builds with `VITE_API_URL=/api`, and Nginx proxies that same-orig
 
 ## Browser end-to-end tests
 
-The Playwright suite uses the real Nginx and Django containers, including the active model artifact:
+The Playwright suite runs against the Docker Compose stack and checks that a valuation renders
+without any prediction API request:
 
 ```powershell
 npx playwright install chromium
@@ -88,5 +107,4 @@ Set `PLAYWRIGHT_BASE_URL` to test another running stack. Failure traces, screens
 written under `test-results/` and are excluded from Git and Docker build contexts.
 
 With the same stack running, `npm run screenshots` regenerates the reviewed desktop and mobile
-portfolio captures under `docs/screenshots/`. The capture fails on browser runtime or prediction
-request errors.
+portfolio captures under `docs/screenshots/`. The capture fails on browser runtime errors.
