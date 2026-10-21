@@ -1,26 +1,42 @@
-# HavenValue — Seattle home-price estimates, computed in your browser
+# HavenValue — home-price estimates for Seattle and Wake County, NC, computed in your browser
 
 [![CI](https://github.com/vinayakraju16/House-Price-Prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayakraju16/House-Price-Prediction/actions/workflows/ci.yml)
 
 **Live demo: [house-price-prediction.vinayakraju.dev](https://house-price-prediction.vinayakraju.dev)**
 
-HavenValue estimates the sale price of a Seattle-area home from its size, location, quality and
-age. The model is a gradient-boosted tree pipeline trained on **83,593 real King County Assessor
-sales**. It runs **entirely in the visitor's browser**: the deployed site is a static Cloudflare
+HavenValue estimates the sale price of a home from its size, location, quality and age. The ZIP
+code picks the market model:
+
+| Market | Training data | Model | Holdout median error |
+|---|---|---|---:|
+| **Seattle** (King County, WA; ZIPs 98101–98199) | 84,965 King County Assessor sales, 2015 – Oct 2026 | 3.1.0, gradient-boosted trees | 9.8% (2026 sales) |
+| **Wake County, NC** (38 ZIPs) | 36,386 county-qualified sales, Oct 2024 – Oct 2026, plus ZIP market data | wake-county-1.0.0, gradient-boosted trees priced relative to the ZIP's Zillow home value index | 7.8% (Apr–Oct 2026 sales) |
+
+Everything runs **entirely in the visitor's browser**: the deployed site is a static Cloudflare
 Workers app with no backend, and every estimate comes with:
 
 - a measured 90% price range;
 - a per-feature explanation of what drove the price;
 - the five most similar historical sales;
-- live "what-if" sliders that re-price the home as you drag.
+- live "what-if" sliders that re-price the home as you drag;
+- in Wake County, the ZIP's latest market conditions (Zillow home value and trend, days on market,
+  price cuts, mortgage rate).
 
 ![HavenValue estimate with empirical range, factors, and comparables](docs/screenshots/valuation-result-desktop.png)
 
 ## Highlights
 
-- **Real data, privacy-safe.** The model joins the county's sales, residential-building and parcel
-  extracts (2015 to July 2026). Owner names, addresses and recording numbers are dropped at read
-  time ([`ml/data/king_county.py`](ml/data/king_county.py)).
+- **Real data, privacy-safe.** Seattle joins the county's sales, residential-building and parcel
+  extracts; Wake County joins its appraiser-reviewed qualified sales with the fixed-width real
+  estate file. Owner names, addresses and recording numbers are never read
+  ([`ml/data/king_county.py`](ml/data/king_county.py), [`ml/data/wake_county.py`](ml/data/wake_county.py)).
+- **2026 market data, tested before trusting it.** Zillow ZIP home values, Realtor.com ZIP
+  inventory, Freddie Mac mortgage rates and Census ZIP income are joined with a one-month lag
+  ([`ml/data/market_features.py`](ml/data/market_features.py)). An ablation on later sales showed
+  that inventory and rate inputs *hurt* (they encode when a sale happened, which shuffled CV had
+  hidden), while ZIP income helps. The Wake model is trained on price relative to the ZIP's Zillow
+  index, so estimates follow the local market at each monthly refresh without retraining
+  ([`reports/MARKET_FEATURES_2026.md`](reports/MARKET_FEATURES_2026.md)).
 - **Target leakage caught and fixed.** An earlier model reported R² 0.957, but two of its features
   were computed from the sale price itself. Measured the way the API actually runs it, it scored
   R² 0.499. It was retired and rebuilt
@@ -47,21 +63,40 @@ Workers app with no backend, and every estimate comes with:
 ```mermaid
 flowchart LR
     A[King County Assessor extracts] --> B[Privacy-safe joins and validation]
-    B --> C[Grouped-CV benchmark and tuning]
+    W[Wake County qualified sales + real estate file] --> B
+    M[Zillow, Realtor.com, Freddie Mac, Census ZIP data] --> B
+    B --> C[Benchmark, temporal validation, tuning]
     C --> D[Checksummed model registry]
-    D --> E[export_browser_model.py]
-    E --> F[Model JSON in the React app]
-    F --> G[Browser: prediction, range, Shapley factors, comparables, what-if]
+    D --> E[export_browser_model.py / export_market_model.py]
+    E --> F[Model JSON per market + markets.json ZIP routing]
+    F --> G[Browser: prediction, range, Shapley factors, comparables, what-if, market context]
     D --> H[Django API: same model for other clients]
     H --> I[Telemetry and drift monitoring]
 ```
 
-Training is an explicit offline step. The website never calls a server: Vite ships the model as
-two lazily loaded JSON files (~2 MB, much smaller gzipped) that the browser downloads only when
-someone asks for an estimate. The Django API serves the same registered artifact for other
+Training is an explicit offline step. The website never calls a server: Vite ships each market's
+model as two lazily loaded JSON files (~1–2 MB, much smaller gzipped) that the browser downloads
+only for the market of the ZIP being estimated. The Django API serves the same registered artifact for other
 clients and for the Docker Compose stack.
 
 ## Results
+
+### Wake County, NC
+
+Chosen on a time-ordered validation (train before 2026, validate Jan–Mar 2026) and scored once on
+9,206 untouched sales from Apr–Oct 2026: **MAE $70,361, R² 0.823, median error 7.8%, 61% within
+10%** of the sale price; new construction 5.7% vs resales 8.5%. Full ablation in
+[`reports/WAKE_COUNTY_MODEL.md`](reports/WAKE_COUNTY_MODEL.md).
+
+### Seattle 3.1.0 (October 2026 refresh)
+
+The county's October 2026 extracts added 1,238 sales after the previous model's data ended
+(2026-07-22). On those unseen sales the previous 3.0.0 model had a 10.6% median error; the same
+tuned recipe, evaluated on 2026 sales it was not trained on, has 9.8%. 3.1.0 is that recipe refit on
+every sale through 2026-10-13 ([`ml/training/refresh_king_county.py`](ml/training/refresh_king_county.py),
+[`reports/king_county_refresh.json`](reports/king_county_refresh.json)).
+
+### Seattle model selection (3.0.0 recipe)
 
 Model selection uses 5-fold `GroupKFold` by parcel. Parcels that appear in the 2025–2026 holdout
 are excluded from development data.
